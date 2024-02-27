@@ -1,0 +1,59 @@
+{% extends "bases/base.html" %}
+
+{% block title %}
+<title>{% if PAGE_TITLE is defined %}{{ PAGE_TITLE }}{% else %}Select Video{% endif %}</title>
+{% endblock %}
+
+{% block styles %}
+{{ from_style("css/select_video.css") }}
+{% endblock %}
+
+{% block scripts %}
+{{ from_script("js/select_video.js") }}
+{% endblock %}
+
+{% block body %}
+    <div class="video-menu mode-select">
+        <div class="video-select">
+            <form id="videoSelectForm">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td><label>Upload Video</label></td>
+                            <td><input name="file" type="file" accept="video/*"/></td>
+                        </tr>
+                        <tr>
+                            <td><label>Video from URL</label></td>
+                            <!-- cite: https://stackoverflow.com/a/3809435 -->
+                            <td><input name="url" type="url" pattern="https://.*"/></td>
+                        </tr>
+                        <tr>
+                            <td><button type="submit">Load Video</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </form>
+        </div>
+        <div class="video-trim">
+            <form id="videoTrimForm">
+                <div id="videoPreview" class="video-preview">
+                </div>
+                <table>
+                    <tbody>
+                        <tr>
+                            <td><label>Start Time (seconds)</label></td>
+                            <td><input name="start" type="number" min="0" /></td>
+                            <td><button type="button">Use Timestamp</button></td>
+                        </tr>
+                        <tr>
+                            <td><label>Duration (seconds)</label></td>
+                            <td><input name="duration" type="number" min="1" /></td>
+                            <td><button type="button">Use Timestamp</button></td>
+                        </tr>
+                        <tr><td><button type="submit">Continue</button></td><td><button id="cancelTrim" type="button">Cancel</button></td></tr>
+                    </tbody>
+                </table>
+            </form>
+        </div>
+    </div>
+{% endblock %}

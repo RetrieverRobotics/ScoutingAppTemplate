@@ -1,0 +1,39 @@
+.video-menu {
+    --width: 50vw;
+    --height: 30vw;
+
+    position: fixed;
+    width: var(--width);
+    height: var(--height);
+    left: calc(50vw - var(--width)/2);
+    top: calc(50vh - var(--height)/2);
+
+    background-color: var(--color-ui-bg); /* TODO variable "color-ui-bg" */
+    border-radius: 10px;
+}
+
+.video-menu td {
+    padding: 0.75em 0.25em;
+}
+
+.video-menu .video-select {
+    padding: 1em;
+    display: none;
+}
+
+.video-menu.mode-select .video-select {
+    display: block;
+}
+
+.video-menu .video-trim {
+    display: none;
+}
+
+.video-menu.mode-trim .video-trim {
+    display: block;
+}
+
+.video-menu .video-trim .video-preview.preview-url .preview-youtube {
+    width: calc(var(--width) / 2);
+    height: calc(var(--height) / 2.125);
+}

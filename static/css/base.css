@@ -1,0 +1,33 @@
+html {
+    /* variables */
+
+    --color-bg: #222;
+    --color-fg: #eee;
+    --color-ui-bg-components: 60, 60, 60;
+    --color-ui-bg: rgb(var(--color-ui-bg-components));
+    --color-ui-fg-components: 235, 204, 64;
+    --color-ui-fg: rgb(var(--color-ui-fg-components));
+    --color-ui-fg-acc-components: 170, 153, 17; /* foreground accent color */
+    --color-ui-fg-acc: rgb(var(--color-ui-fg-acc-components));
+
+    --font-family: Arial, Helvetica, sans-serif;
+    --font-size: 12pt;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-family);
+    font-size: var(--font-size);
+}
+
+button {
+    background-color: var(--color-ui-fg);
+    border: 2px solid var(--color-ui-fg-acc);
+}
+
+button:active {
+    background-color: rgba(var(--color-ui-fg-components), 0.4);
+    border-color: rgb(var(var(--color-ui-fg-acc-components)), 0.4);
+    transform: translate(0, 2px);
+}
