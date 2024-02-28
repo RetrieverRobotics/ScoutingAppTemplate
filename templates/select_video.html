@@ -41,14 +41,16 @@
                 <table>
                     <tbody>
                         <tr>
-                            <td><label>Start Time (seconds)</label></td>
-                            <td><input name="start" type="number" min="0" /></td>
-                            <td><button type="button">Use Timestamp</button></td>
+                            <td><label>Start Time (timestamp or seconds)</label></td>
+                            <td><input name="start" type="text" value="0"/></td>
                         </tr>
                         <tr>
                             <td><label>Duration (seconds)</label></td>
-                            <td><input name="duration" type="number" min="1" /></td>
-                            <td><button type="button">Use Timestamp</button></td>
+                            <td><input name="duration" type="number" value="200" min="1" /></td>
+                        </tr>
+                        <tr>
+                            <td><label>Use whole video</label></td>
+                            <td><input name="whole_video" type="checkbox" value="yes" /></td>
                         </tr>
                         <tr><td><button type="submit">Continue</button></td><td><button id="cancelTrim" type="button">Cancel</button></td></tr>
                     </tbody>
