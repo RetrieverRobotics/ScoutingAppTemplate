@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, send_file
 import json
 import os
+from typing import NamedTuple
 
 CLIPS_DIR = "clips"
 
@@ -51,6 +52,44 @@ def read_clips_tree(dir=CLIPS_DIR, as_paths=False)->dict[str, list[str]]:
         for clipname in os.listdir(grouppath):
             clips.append(os.path.join(grouppath, clipname) if as_paths else clipname)
     return tree
+
+class Clip(NamedTuple):
+    """
+    Named tuple for containing detailed clip data.
+
+    `name`          - The clip's name (full)
+
+    `match`         - Match the clip is for
+
+    `file_format`   - File format that the clip uses
+    """
+    name:str
+    match:int
+    file_format:str
+
+class ClipGroup(NamedTuple):
+    """
+    Named tuple for containing detailed clip group data.
+
+    `name`          - The clip group's name (parsed)
+
+    `date`          - Date when the match happened
+
+    `clips`         - List of clips that the group contains
+    """
+    name:str
+    date:datetime
+    clips:list[Clip]
+    
+def detailed_clips_tree(tree:dict[str, list[str]])->dict[str, ClipGroup]:
+    """Parses each group and clip name from a normal clips tree to create a more detailed tree."""
+    detailed = {}
+    for groupname, clips in tree.items():
+        group = ClipGroup(*parse_group_name(os.path.basename(groupname)), [
+            Clip(clipname, parse_clip_name(os.path.basename(clipname)), clipname.rsplit(".", 1)[-1]) for clipname in clips
+        ])
+        detailed[groupname] = group
+    return detailed
 
 def construct_path(comp_name:str, dt:datetime, match:int, file_format:str|None=None):
     """Construct a path containing the clip group and clip given their components."""
