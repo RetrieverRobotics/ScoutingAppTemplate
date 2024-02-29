@@ -8,7 +8,7 @@
     left: calc(50vw - var(--width)/2);
     top: calc(50vh - var(--height)/2);
 
-    background-color: var(--color-ui-bg); /* TODO variable "color-ui-bg" */
+    background-color: var(--color-ui-bg);
     border-radius: 10px;
 }
 
@@ -22,4 +22,9 @@
 
 .clip-selection.clip-selection-selected {
     display: block;
+}
+
+.video-preview > video {
+    max-width: calc(var(--width) / 2);
+    max-height: calc(var(--height) * 2 / 3);
 }

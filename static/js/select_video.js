@@ -1,4 +1,5 @@
 const ID_VIDEO_SELECT_FORM = "videoSelectForm";
+const ID_VIDEO_PREVIEW = "videoPreview";
 
 const CLASS_CLIP_SELECTION = "clip-selection";
 const CLASS_CLIP_SELECTED = "clip-selection-selected";
@@ -9,10 +10,33 @@ const ATTR_NAVIGATE = "navigate"
 window.addEventListener("load", () => {
     /** @type {HTMLFormElement} */
     const videoSelectForm = document.getElementById(ID_VIDEO_SELECT_FORM);
+    /** @type {HTMLDivElement} */
+    const videoPreview = document.getElementById(ID_VIDEO_PREVIEW);
     /** @type {HTMLInputElement} */
     const fileInput = videoSelectForm.querySelector("input[name=\"file\"]");
     /** @type {HTMLSelectElement} */
     const groupSelect = videoSelectForm.querySelector("select[name=\"clip_group\"]");
+
+    /**
+     * Set the preview video for the video select form
+     * @param {string|HTMLVideoElement|null} video The video to set
+     */
+    function setVideoPreview(video) {
+        while (videoPreview.children.length > 0)
+            videoPreview.removeChild(videoPreview.firstChild);
+
+        if (video === null) return;
+
+        if (typeof video == "string") {
+            const src = video;
+            video = document.createElement("video");
+            video.src = src;
+            video.controls = true;
+        }
+
+        videoPreview.appendChild(video);
+    }
+
 
     const firstClipSelect = videoSelectForm.querySelector(`.${CLASS_CLIP_SELECTION}`);
     if (firstClipSelect) {
@@ -26,7 +50,12 @@ window.addEventListener("load", () => {
     fileInput.addEventListener("input", () => {
         fileInput.setCustomValidity("");
 
-        //TODO set video preview
+        if (fileInput.files.length > 0) {
+            const objUrl = URL.createObjectURL(fileInput.files[0]);
+            setVideoPreview(objUrl);
+        }
+        else
+            setVideoPreview(null);
     });
 
     groupSelect.addEventListener("input", () => {
@@ -49,14 +78,20 @@ window.addEventListener("load", () => {
         const currentSelect = current.querySelector("select");
         current.classList.add(CLASS_CLIP_SELECTED);
         currentSelect.disabled = false;
-
-        //TODO set video preview if not fileInput
+        
+        if (fileInput.files.length == 0) {
+            const url = `/clips/${groupSelect.value}/${currentSelect.value}`;
+            setVideoPreview(url);
+        }
 
     });
 
-    videoSelectForm.querySelectorAll(`.${CLASS_CLIP_SELECTION}`).forEach(elm => {
+    videoSelectForm.querySelectorAll(`.${CLASS_CLIP_SELECTION} > select`).forEach(elm => {
         elm.addEventListener("input", () => {
-            //TODO set video preview if not fileInput
+            if (fileInput.files.length == 0) {
+                const url = `/clips/${groupSelect.value}/${elm.value}`;
+                setVideoPreview(url);
+            }
         });
     })
 
