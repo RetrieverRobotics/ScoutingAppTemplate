@@ -1,3 +1,4 @@
+import clips #DEBUG
 from flask import Flask, redirect, render_template, session, url_for
 import markupsafe
 import os
@@ -73,7 +74,20 @@ def serve(host="0.0.0.0", port=80, **other):
 @set_index_redirect
 @app.get("/test")
 def test():
-    return render_template("select_video.html")
+    return render_template(
+        "select_video.html",
+        SUBMISSION_DETAILS = {
+            "action":"/test",
+            "method":"get",
+            "navigate":False
+        },
+        CLIP_TREE = clips.detailed_clips_tree({
+            clips.format_group_name("test_comp", clips.datetime(2023, 2, 16)): ["match_1.mp4", "match_2.mp4", "match_3.mp4"],
+            clips.format_group_name("test_comp", clips.datetime(2023, 2, 17)): ["match_4.mp4", "match_5.mp4", "match_6.mp4"],
+            clips.format_group_name("test_comp2", clips.datetime(2023, 2, 18)): ["match_1.mp4", "match_2.mp4", "match_3.mp4"],
+            clips.format_group_name("test_comp2", clips.datetime(2023, 2, 19)): ["match_4.mp4", "match_5.mp4", "match_6.mp4"]
+        })
+    )
 
 if __name__ == "__main__":
     serve()

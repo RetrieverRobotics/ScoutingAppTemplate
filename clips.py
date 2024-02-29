@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from flask import Blueprint, send_file
 import json
 import os
@@ -15,7 +15,7 @@ bp = Blueprint("clips", __name__, url_prefix="/clips")
 def parse_group_name(name:str)->tuple[str, datetime]:
     """Parses a group name into a competition name and the utc datetime for when the competition happened."""
     compname, datestr = name.rsplit(GROUP_NAME_SEP, 1) #"competition_name.%Y-%m-%d"
-    return compname, datetime.strptime(datestr, GROUP_NAME_DATE_FORMAT).replace(tzinfo=timezone.utc)
+    return compname, datetime.strptime(datestr, GROUP_NAME_DATE_FORMAT)
 
 def format_group_name(name:str, dt:datetime)->str:
     """Formats a competition name and competition date into a group name."""
@@ -25,7 +25,7 @@ def parse_clip_name(name:str)->int|None:
     """Parses the match number from a clip name."""
     if name.startswith(CLIP_NAME_PREFIX):
         start = len(CLIP_NAME_PREFIX)
-        return int(name[start:name.index(".", start=start+1)])
+        return int(name[start:name.index(".", start+1)])
     else:
         return None
     
