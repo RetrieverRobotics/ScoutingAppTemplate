@@ -16,24 +16,10 @@
     padding: 0.75em 0.25em;
 }
 
-.video-menu .video-select {
-    padding: 1em;
+.clip-selection {
     display: none;
 }
 
-.video-menu.mode-select .video-select {
+.clip-selection.clip-selection-selected {
     display: block;
-}
-
-.video-menu .video-trim {
-    display: none;
-}
-
-.video-menu.mode-trim .video-trim {
-    display: block;
-}
-
-.video-menu .video-trim .video-preview.preview-url .preview-youtube {
-    width: calc(var(--width) / 2);
-    height: calc(var(--height) / 2.125);
 }
