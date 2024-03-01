@@ -1,12 +1,13 @@
-import clips #DEBUG
 from flask import Flask, redirect, render_template, session, url_for
 import markupsafe
 import os
 import uuid
 import viewdata
 import waitress
+import werkzeug.utils
 
 APP_INDEX_REDIRECT = "INDEX_REDIRECT"
+APP_INDEX_REDIRECT_ENDPOINT = "INDEX_REDIRECT_ENDPOINT"
 
 def get_secret_key():
     if os.path.isfile("secret_key"):
@@ -49,14 +50,20 @@ app.jinja_env.globals["from_style"] = from_style
 app.jinja_env.globals["from_script"] = from_script
 
 app.config[APP_INDEX_REDIRECT] = None
+app.config[APP_INDEX_REDIRECT_ENDPOINT] = None
 
 app.register_blueprint(viewdata.bp)
 
-def set_index_redirect(f):
-    module_name = f.__module__
-    app.config[APP_INDEX_REDIRECT] = f.__name__ if module_name == "__main__" else f"{module_name}.{f.__name__}"
-    return f
+def _get_func_endpoint(f):
+    for rule in app.url_map.iter_rules():
+        if app.view_functions[rule.endpoint] is f:
+            return rule.endpoint
 
+def set_index_redirect(f):
+    """Set the index route to redirect to the given endpoint function."""
+    app.config[APP_INDEX_REDIRECT] = f
+    return f
+    
 @app.before_request
 def before():
     if "id" not in session:
@@ -64,30 +71,8 @@ def before():
 
 @app.get("/")
 def index():
-    return redirect(url_for(app.config[APP_INDEX_REDIRECT]))
+    return redirect(url_for(app.config[APP_INDEX_REDIRECT_ENDPOINT]))
 
 def serve(host="0.0.0.0", port=80, **other):
+    app.config[APP_INDEX_REDIRECT_ENDPOINT] = _get_func_endpoint(app.config[APP_INDEX_REDIRECT])
     waitress.serve(app, host=host, port=port, **other)
-
-#DEBUG
-
-@set_index_redirect
-@app.get("/test")
-def test():
-    return render_template(
-        "select_video.html",
-        SUBMISSION_DETAILS = {
-            "action":"/test",
-            "method":"get",
-            "navigate":False
-        },
-        CLIP_TREE = clips.detailed_clips_tree({
-            clips.format_group_name("test_comp", clips.datetime(2023, 2, 16)): ["match_1.mp4", "match_2.mp4", "match_3.mp4"],
-            clips.format_group_name("test_comp", clips.datetime(2023, 2, 17)): ["match_4.mp4", "match_5.mp4", "match_6.mp4"],
-            clips.format_group_name("test_comp2", clips.datetime(2023, 2, 18)): ["match_1.mp4", "match_2.mp4", "match_3.mp4"],
-            clips.format_group_name("test_comp2", clips.datetime(2023, 2, 19)): ["match_4.mp4", "match_5.mp4", "match_6.mp4"]
-        })
-    )
-
-if __name__ == "__main__":
-    serve()
