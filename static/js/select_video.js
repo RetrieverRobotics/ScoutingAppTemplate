@@ -79,19 +79,15 @@ window.addEventListener("load", () => {
         current.classList.add(CLASS_CLIP_SELECTED);
         currentSelect.disabled = false;
         
-        if (fileInput.files.length == 0) {
-            const url = `/clips/${groupSelect.value}/${currentSelect.value}`;
-            setVideoPreview(url);
-        }
+        const url = `/clips/${groupSelect.value}/${currentSelect.value}`;
+        setVideoPreview(url);
 
     });
 
     videoSelectForm.querySelectorAll(`.${CLASS_CLIP_SELECTION} > select`).forEach(elm => {
         elm.addEventListener("input", () => {
-            if (fileInput.files.length == 0) {
-                const url = `/clips/${groupSelect.value}/${elm.value}`;
-                setVideoPreview(url);
-            }
+            const url = `/clips/${groupSelect.value}/${elm.value}`;
+            setVideoPreview(url);
         });
     })
 
@@ -135,11 +131,9 @@ window.addEventListener("load", () => {
 
             if (method == "GET") {
                 if (fileInput.files.length > 0)
-                    url.searchParams.append("file", data.get("file").name); 
-                else {
-                    url.searchParams.append("clip_group", data.get("clip_group"));
-                    url.searchParams.append("clip_name", data.get("clip_name"));
-                }
+                    url.searchParams.append("file", data.get("file").name);
+                url.searchParams.append("clip_group", data.get("clip_group"));
+                url.searchParams.append("clip_name", data.get("clip_name"));
             }
             else if (method == "POST")
                 options["body"] = data;
