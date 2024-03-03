@@ -79,14 +79,14 @@ window.addEventListener("load", () => {
         current.classList.add(CLASS_CLIP_SELECTED);
         currentSelect.disabled = false;
         
-        const url = `/clips/${groupSelect.value}/${currentSelect.value}`;
+        const url = `/clips/load/${groupSelect.value}/${currentSelect.value}`;
         setVideoPreview(url);
 
     });
 
     videoSelectForm.querySelectorAll(`.${CLASS_CLIP_SELECTION} > select`).forEach(elm => {
         elm.addEventListener("input", () => {
-            const url = `/clips/${groupSelect.value}/${elm.value}`;
+            const url = `/clips/load/${groupSelect.value}/${elm.value}`;
             setVideoPreview(url);
         });
     })
