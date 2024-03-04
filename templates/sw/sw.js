@@ -239,21 +239,22 @@ async function handleFetch(ev) {
     }
 
     const cache = await caches.open(CACHE_PAGES);
+    const match = await cache.match(request);
     
     if (isConnected) {
         try {
             const response = await fetch(request);
-            cache.put(request, response.clone());
+            if (!match || response.ok)
+                cache.put(request, response.clone());
             return response;
         }
         catch (err) {
-            const match = await cache.match(request);
             if (!isConnected && match)
                 return match;
             else throw err;
         }
     }
-    else return await cache.match(request);
+    else return match;
 }
 
 self.addEventListener("install", (ev) => {
