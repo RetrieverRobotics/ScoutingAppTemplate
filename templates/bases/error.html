@@ -1,0 +1,8 @@
+{% extends "bases/base.html" %}
+{% block title %}<title>{{ ERROR_TITLE }}</title>{% endblock %}
+{% block body %}
+
+<h1><span id="ERROR_NAME">{{ ERROR_NAME }}</span>(<span id="ERROR_CODE">{{ ERROR_CODE }}</span>)</h1>
+<p>{{ ERROR_BODY }}</p>
+
+{% endblock %}
