@@ -1,5 +1,34 @@
 {% extends "bases/base.html" %}
 
+{#
+  select_video template
+
+  Use this template to allow the user to select a video to scout from.
+
+  Variables:
+
+  PAGE_TITLE:               Title to use for the page. Defaults to "Select Video" (optional)
+  SUBMISSION_DETAILS:       Details on what to do/where to go after a successful submission
+                            Takes the format of
+
+                            {
+                                "action":"/send/to/here",
+                                "method":"get|post",
+                                "navigate": true|false
+                            }
+
+  CLIP_TREE:                A detailed clip tree to select a video from
+
+
+  Output:
+
+  file:                     If the SUBMISSION_DETAILS.method is "post", then the local file submitted to the form will be uploaded.
+                            If the method is "get", then only the filename will be sent.
+  clip_group:               The name of the clip group that the user selected. Will always be something.
+  clip_name                 The name of the clip that the user selected. Will always be something.
+
+#}
+
 {% block title %}
 <title>{% if PAGE_TITLE is defined %}{{ PAGE_TITLE }}{% else %}Select Video{% endif %}</title>
 {% endblock %}
@@ -13,47 +42,52 @@
 {% endblock %}
 
 {% block body %}
-    <div class="video-menu mode-select">
-        <div class="video-select">
-            <form id="videoSelectForm">
-                <table>
-                    <tbody>
-                        <tr>
-                            <td><label>Upload Video</label></td>
-                            <td><input name="file" type="file" accept="video/*"/></td>
-                        </tr>
-                        <tr>
-                            <td><label>Video from URL</label></td>
-                            <!-- cite: https://stackoverflow.com/a/3809435 -->
-                            <td><input name="url" type="url" pattern="https://.*"/></td>
-                        </tr>
-                        <tr>
-                            <td><button type="submit">Load Video</button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </form>
-        </div>
-        <div class="video-trim">
-            <form id="videoTrimForm">
-                <div id="videoPreview" class="video-preview">
-                </div>
-                <table>
-                    <tbody>
-                        <tr>
-                            <td><label>Start Time (seconds)</label></td>
-                            <td><input name="start" type="number" min="0" /></td>
-                            <td><button type="button">Use Timestamp</button></td>
-                        </tr>
-                        <tr>
-                            <td><label>Duration (seconds)</label></td>
-                            <td><input name="duration" type="number" min="1" /></td>
-                            <td><button type="button">Use Timestamp</button></td>
-                        </tr>
-                        <tr><td><button type="submit">Continue</button></td><td><button id="cancelTrim" type="button">Cancel</button></td></tr>
-                    </tbody>
-                </table>
-            </form>
-        </div>
-    </div>
+<div class="video-menu mode-select">
+    <form id="videoSelectForm"
+        enctype="multipart/form-data"
+        action="{{ SUBMISSION_DETAILS.action }}"
+        method="{{ SUBMISSION_DETAILS.method }}"
+        {% if SUBMISSION_DETAILS.navigate %}
+        navigate
+        {% endif %}
+    >
+        <table>
+            <tbody>
+                <tr>
+                    <td><label>Upload Video</label></td>
+                    <td><input name="file" type="file" accept="video/*"/></td>
+                </tr>
+                <tr>
+                    <td><label>Select Clip</label></td>
+                    <td>
+                        <select name="clip_group">
+                            {# NOTE: expects a detailed clip tree #}
+                            {% for group_name, group in CLIP_TREE.items() %}
+                            <option value="{{ group_name }}">{{ group.name }} - {{ group.date.strftime("%Y-%m-%d") }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        {% for group_name, group in CLIP_TREE.items() %}
+                        <div class="clip-selection" group_name="{{ group_name }}">
+                            <select name="clip_name" disabled>
+                                {% for clip in group.clips %}
+                                <option value="{{ clip.name }}">Match {{ clip.match }} ({{ clip.file_format }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+
+                    </td>
+                </tr>
+                <tr>
+                    <td><div id="videoPreview" class="video-preview"></td>
+                </tr>
+                <tr>
+                    <td><button type="submit">Select Video</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
 {% endblock %}
