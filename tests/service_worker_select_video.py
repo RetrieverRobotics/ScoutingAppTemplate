@@ -4,7 +4,7 @@ imports_for_testing()
 import app
 import clips
 from datetime import datetime
-from flask import Blueprint, render_template, url_for
+from flask import Blueprint, render_template, send_file
 
 ACTION = "/get_video"
 #######################################
@@ -56,6 +56,10 @@ def service_worker():
         VIDEO_SELECTION_REDIRECT=VIDEO_SELECTION_REDIRECT,
         ASSETS=assets
     ), 200, {"Content-Type":"application/javascript"}
+
+@bp.get("/manifest.json")
+def get_manifest():
+    return send_file("manifest.json", mimetype="application/json")
 
 app.app.register_blueprint(clips.bp)
 app.app.register_blueprint(bp)

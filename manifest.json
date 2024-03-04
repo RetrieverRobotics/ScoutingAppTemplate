@@ -1,0 +1,10 @@
+{
+    "name": "Scouting App Template",
+    "short_name": "ScoutingAppTemplate",
+    "start_url": "/",
+    "scope":"/",
+    "display": "standalone",
+    "background_color": "#333",
+    "description": "Template for the Scouting App.",
+    "icons": []
+  }
