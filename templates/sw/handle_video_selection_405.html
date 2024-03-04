@@ -1,0 +1,6 @@
+{% set ERROR_CODE = 405 %}
+{% set ERROR_TITLE = "Service Worker | " ~ ERROR_CODE %}
+{% set ERROR_NAME = "Method Not Allowed" %}
+{% set ERROR_BODY = "The service worker cannot retrieve the requested video using the specified method." %}
+
+{% extends "bases/error.html" %}
