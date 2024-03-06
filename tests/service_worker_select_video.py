@@ -25,12 +25,6 @@ SW_NAMESPACE = "client"
 VIDEO_SELECTION_REDIRECT = "/test/after"
 #######################################
 
-#cite: https://stackoverflow.com/a/13318415
-def has_no_empty_params(rule):
-    defaults = rule.defaults if rule.defaults is not None else ()
-    arguments = rule.arguments if rule.arguments is not None else ()
-    return len(defaults) >= len(arguments)
-
 bp = Blueprint("test", __name__)
 
 @app.set_index_redirect
