@@ -11,14 +11,15 @@
 #}
 */
 
+const LOCAL_STORAGE_SW_URL_NAMESPACE = "SW_URL_NAMESPACE";
 const CACHE_PAGES = "pages";
 const CACHE_CLIPS = "clips";
 
 const CURRENT_VIDEO = "video";
 const CHECK_CONNECTION_INTERVAL = 10000; //ms
 
-//the url used to access the service worker
-const SW_URL = eval(`{{ url_for(request.endpoint) | tojson }}`);
+//URL used to access the service worker
+const SW_URL = new URL(eval(`{{ url_for(request.endpoint) | tojson }}`), location.origin);
 
 //variables
 
@@ -217,6 +218,38 @@ async function handleClipSelection(request) {
 }
 
 /**
+ * Handle an install event
+ * @param {Event} ev The install event to handle
+ */
+async function handleInstall(ev) {
+    self.skipWaiting();
+
+    //set connection checking interval
+    if (checkConnectionIntervalId)
+        clearInterval(checkConnectionIntervalId);
+    checkConnectionIntervalId = setInterval(() => {
+        checkConnection().then(status => {
+            isConnected = status;
+        });
+    }, CHECK_CONNECTION_INTERVAL);
+
+    //pre-load assets
+    console.log(`Pre-loading assets (${ASSETS.length})`);
+    const cache = await caches.open(CACHE_PAGES);
+    console.log(`Caching assets in cache "${CACHE_PAGES}"`);
+    for (const asset of ASSETS) {
+        try {
+            const response = await fetch(asset);
+            if (response.ok)
+                cache.put(asset, response.clone());
+        }
+        catch(err) {
+            console.error(err);
+        }
+    }
+}
+
+/**
  * Handle a fetch event
  * @param {Event} ev The fetch event to handle
  * @returns {Promise<Response>} The response to respond with
@@ -236,6 +269,24 @@ async function handleFetch(ev) {
     }
     else if (url.pathname.startsWith(LOCAL_VIDEO_PATHNAME)) {
         return getLocalVideo(url);
+    }
+    else if (url.pathname == SW_URL_NAMESPACE.pathname + "/current") {
+        if (request.method.toUpperCase() != "GET") {
+            //TODO 405 error
+        }
+        const key = url.searchParams.get("key");
+        if (key == null) {
+            //TODO 400 error
+        }
+        
+        const value = current.get(key);
+        return new Response(JSON.stringify(value), {
+            status: 200,
+            statusText: "OK",
+            headers: new Headers({
+                "Content-Type": "application/json; charset=utf-8"
+            })
+        });
     }
 
     const cache = await caches.open(CACHE_PAGES);
@@ -258,31 +309,24 @@ async function handleFetch(ev) {
 }
 
 self.addEventListener("install", (ev) => {
-    if (checkConnectionIntervalId)
-        clearInterval(checkConnectionIntervalId);
-    
-    checkConnectionIntervalId = setInterval(() => {
-        checkConnection().then(status => {
-            isConnected = status;
-        });
-    }, CHECK_CONNECTION_INTERVAL);
+    ev.waitUntil(handleInstall(ev));
+});
 
-    //pre-load assets
-    console.log(`Pre-loading assets (${ASSETS.length})`);
-    ev.waitUntil(caches.open(CACHE_PAGES).then(cache => {
-        console.log(`Caching assets in cache "${CACHE_PAGES}"`);
-        for (const asset of ASSETS) {
-            try {
-                fetch(asset).then(response => {
-                    if (response.ok)
-                        cache.put(asset, response.clone())
-                });
-            }
-            catch(err) {
-                console.error(err);
-            }
-        }
-    }));
+self.addEventListener("activate", (ev) => {
+    console.log("Claiming clients");
+    ev.waitUntil(clients.claim());
+})
+
+self.addEventListener("message", async (ev) => {
+    if (ev.origin != location.origin) return;
+    const msg = ev.data;
+    if (msg.name == "namespace/get") {
+        ev.source.postMessage({
+            name: "localstorage/set",
+            key: "SW_URL_NAMESPACE",
+            value: SW_URL_NAMESPACE.href
+        });
+    }
 });
 
 self.addEventListener("fetch", (ev) => {
