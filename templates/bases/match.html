@@ -1,22 +1,32 @@
-{% extends "base.html" %}
+{% extends "bases/base.html" %}
 
 {% block title %}{% endblock %}
 
 {% block styles %}
+{{ from_style("css/videoplayer.css") }}
+{% block extrastyles %}
+{% endblock %}
 {% endblock %}
 
 {% block scripts %}
+{{ from_script("js/videoplayer.js") }}
+{{ from_script("js/match.js") }}
+
+{% block extrascripts %}
+{% endblock %}
 {% endblock %}
 
 {% block body %}
 <div>
-    <div class="video-view">
-    </div>
-    <div>
+    <div class="video-container">
+        <div id="videoView" class="video-view">
+        </div>
         <div class="video-controls">
         </div>
-        <div class="scouting-inputs">
-        </div>
+    </div>
+    <div>
+        {% block scouting_inputs %}
+        {% endblock %}
     </div>
 </div>
 {% endblock %}

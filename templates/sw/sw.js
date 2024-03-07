@@ -153,7 +153,7 @@ async function handleClipSelection(request) {
         const clip_name = data.get("clip_name");
 
         //prioritize local file over clip
-        if (file) {
+        if (file && file.size) {
             //create the file response to cache
             const fileCache = new Response(file, {
                 status: 200,
