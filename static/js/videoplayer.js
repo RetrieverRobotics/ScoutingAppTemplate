@@ -3,6 +3,7 @@ const CLASS_VIDEO_PLAYER_CONTROL = "video-player-control";
 const CLASS_VIDEO_PLAYER_PLAY_BUTTON = "video-player-play-button";
 const CLASS_VIDEO_PLAYER_PROGRESS_BAR = "video-player-progress-bar";
 const CLASS_VIDEO_PLAYER_OPTIONS = "video-player-options";
+const CLASS_VIDEO_PLAYER_OPTIONS_MENU = "video-player-options-menu";
 const CLASS_VIDEO_PLAYER_TIMESTAMP = "video-player-timestamp";
 
 const CLASS_PLAY_BUTTON_PLAY = "play-button-play";
@@ -86,12 +87,7 @@ function newPlayerControls() {
 function createOptionMenu() {
     //TODO create the menu
     const menu = document.createElement("div");
-
-    //DEBUG size
-    menu.style.position = "fixed";
-    menu.style.width = "100px";
-    menu.style.height = "200px";
-    menu.style.backgroundColor = "#fff";
+    menu.classList.add(CLASS_VIDEO_PLAYER_OPTIONS_MENU);
 
     return menu;
 }
@@ -143,6 +139,10 @@ function initVideo(video, controls) {
     }
 
     const optionsMenu = () => {
+        //stop if theres already a menu
+        if (video.parentElement.querySelector(`.${CLASS_VIDEO_PLAYER_OPTIONS_MENU}`) !== null)
+            return;
+
         const menu = createOptionMenu();
         
         /**
@@ -158,11 +158,10 @@ function initVideo(video, controls) {
     
         window.addEventListener("click", loseFocusListener);
 
-        document.body.appendChild(menu);
-        const menuRect = menu.getBoundingClientRect();
+        video.parentElement.appendChild(menu);
 
-        menu.style.left = `${video.getBoundingClientRect().right - menuRect.width}px`;
-        menu.style.top = `${video.getBoundingClientRect().bottom - menuRect.height}px`;
+        menu.style.right = "0";
+        menu.style.bottom = "5px";
     }
 
     //video events
