@@ -17,6 +17,7 @@ const CACHE_CLIPS = "clips";
 
 const CURRENT_VIDEO = "video";
 const CHECK_CONNECTION_INTERVAL = 10000; //ms
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 //URL used to access the service worker
 const SW_URL = new URL(eval(`{{ url_for(request.endpoint) | tojson }}`), location.origin);
@@ -218,6 +219,52 @@ async function handleClipSelection(request) {
 }
 
 /**
+ * Handle serving video content to the client (handles 206 Partial Content)
+ * @param {Request} request The incoming request
+ * @param {Response} response The cached video response
+ * @returns {Promise<Response>} The video content to serve (clone)
+ */
+async function handleClipRequest(request, response) {
+    const rangeHeader = request.headers.get("Range");
+
+    //requested partial but returning non-partial from cache
+    if (response.status != 206 && rangeHeader !== null) {
+        //parse the range
+        if (!rangeHeader.includes(",")) {
+            const unitParse = rangeHeader.split("=", 2);
+            const unit = unitParse[0].toLowerCase();
+            if (unit == "bytes") {
+                const rangeParts = unitParse[1].split("-", 2);
+                if (rangeParts.length == 2 && rangeParts[0].trim()) {
+                    const videoContent = await response.blob();
+                    const size = videoContent.size;
+                    const start = Number(rangeParts[0]);
+                    const end = rangeParts[1] ? Number(rangeParts[1]) : null;
+                    const length = end == null ? size - start : end - start;
+                    if (length > 0) {
+                        const range = videoContent.slice(start, start+length);
+                        const newResponse = new Response(range, {
+                            status: 206,
+                            statusText: "Partial Content",
+                            headers: response.headers
+                        });
+                        
+                        newResponse.headers.set("Content-Range", `bytes ${start}-${start+length-1}/${size}`);
+                        newResponse.headers.set("Content-Length", `${range.size}`);
+                        newResponse.headers.set("Content-Type", response.headers.get("Content-Type"));
+                        
+                        return newResponse;
+                    }
+                }
+            }
+        }
+        //TODO 416
+    }
+    else
+        return response.clone();
+}
+
+/**
  * Handle an install event
  * @param {Event} ev The install event to handle
  */
@@ -265,10 +312,12 @@ async function handleFetch(ev) {
             return response;
     }
     else if (url.pathname.startsWith(`/clips`)) {
-        return fetchClip(url, true);
+        return handleClipRequest(request, await fetchClip(url, true));
+        //return fetchClip(url, true);
     }
     else if (url.pathname.startsWith(LOCAL_VIDEO_PATHNAME)) {
-        return getLocalVideo(url);
+        return handleClipRequest(request, await getLocalVideo(url));
+        //return getLocalVideo(url);
     }
     else if (url.pathname == SW_URL_NAMESPACE.pathname + "/current") {
         if (request.method.toUpperCase() != "GET") {

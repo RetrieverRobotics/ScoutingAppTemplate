@@ -1,6 +1,7 @@
 from datetime import datetime
-from flask import Blueprint, send_file
+from flask import Blueprint, Response, request, send_file
 import json
+import mimetypes
 import os
 from typing import NamedTuple
 
@@ -107,4 +108,23 @@ def get_clips_tree():
 @bp.get("/load/<group_name>/<clip_name>")
 def load_clip(group_name:str, clip_name:str):
     path = os.path.join(CLIPS_DIR, group_name, clip_name)
-    return send_file(path, download_name=clip_name)
+    range_header = request.headers.get("Range", None)
+    if range_header is None:
+        return send_file(path, download_name=clip_name, mimetype=mimetypes.guess_type(path)[0])
+    
+    unit_parts = range_header.split("=", 1)
+    if unit_parts[0] == "bytes" and len(unit_parts) > 1:
+        range_parts = unit_parts[1].split("-", 1)
+        if len(range_parts) == 2 and range_parts[0].isdecimal():
+            size = os.path.getsize(path)
+            start = int(range_parts[0])
+            end = int(range_parts[1]) if range_parts[1] else None
+            length = size - start if end is None else end - start
+            if length > 0:
+                with open(path, "rb") as f:
+                    f.seek(start)
+                    response = Response(f.read(length), 206, mimetype=mimetypes.guess_type(path)[0], direct_passthrough=True)
+                response.headers.add("Content-Range", f"bytes {start}-{start+length-1}/{size}")
+                
+                return response
+    return "TODO", 416
