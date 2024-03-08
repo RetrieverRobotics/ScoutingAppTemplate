@@ -1,0 +1,13 @@
+.video-container {
+    width: 20vw;
+    height: auto;
+}
+
+.video-container .video-view {
+    width: 100%;
+    height: 100%;
+}
+
+.video-container .video-view video.video-player {
+    width: 100%;
+}

@@ -34,7 +34,6 @@ function setVideo(src) {
 
     const video = document.createElement("video");
     video.src = src;
-    video.preload = "auto";
     video.preservesPitch = true;
     video.classList.add(CLASS_VIDEO_PLAYER);
 

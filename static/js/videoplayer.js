@@ -50,23 +50,6 @@ function secondsToTimestamp(seconds) {
 }
 
 /**
- * Play the video with the given duration
- * @param {HTMLVideoElement} video The video to play
- * @param {number} percent The duration, in percent (0.0 -> 1.0)
- */
-async function playVideo(video, percent) {
-    const currentTime = Math.min(video.duration * percent, video.duration);
-    const set = currentTime != video.currentTime; //yes, != with floats is pretty sketchy, but if it really hasn't changed then they should be the same
-
-    console.log(currentTime, set)
-
-    await video.play();
-
-    if (set)
-        video.currentTime = currentTime;
-}
-
-/**
  * Creates the elements needed for the custom video controller
  * @returns {ControlElements} The elements
  */
@@ -96,6 +79,23 @@ function newPlayerControls() {
     }
 }
 
+/**
+ * Create the option menu for the video controls
+ * @returns {HTMLDivElement} The constructed option menu
+ */
+function createOptionMenu() {
+    //TODO create the menu
+    const menu = document.createElement("div");
+
+    //DEBUG size
+    menu.style.position = "fixed";
+    menu.style.width = "100px";
+    menu.style.height = "200px";
+    menu.style.backgroundColor = "#fff";
+
+    return menu;
+}
+
 //cite: https://cloudinary.com/blog/build-a-custom-html5-video-player-with-javascript
 
 /**
@@ -120,30 +120,49 @@ function initVideo(video, controls) {
         if (ev.button != 0) return;
 
         if (video.ended) {
-            controlElements.progressBar.value = 0;
-            controlElements.timestamp.innerText = secondsToTimestamp(0);
-            playVideo(video, Math.min(controlElements.progressBar.value / PROGRESS_BAR_MAX, 1.0));
+            video.currentTime = 0;
+            video.play()
         }
         else if(video.paused)
-            playVideo(video, Math.min(controlElements.progressBar.value / PROGRESS_BAR_MAX, 1.0));
+            video.play()
         else
             video.pause();
     }
 
     const handleProgress = (ev) => {
-        console.log("handle")
         const percent = video.duration > 0 ? (video.currentTime / video.duration) : 0;
-        console.log(percent, video.currentTime);
         controlElements.progressBar.value = Math.min(Math.floor(percent * PROGRESS_BAR_MAX), PROGRESS_BAR_MAX);
         controlElements.timestamp.innerText = secondsToTimestamp(Math.floor(video.currentTime));
     }
 
     const setTime = () => {
-        console.log("set")
         const value = Number(controlElements.progressBar.value);
         const percent = Math.max(0, value / PROGRESS_BAR_MAX);
-        const currentTime = Math.min(video.duration * percent, video.duration);
-        controlElements.timestamp.innerText = secondsToTimestamp(Math.floor(currentTime));
+        video.currentTime = Math.min(video.duration * percent, video.duration);
+        controlElements.timestamp.innerText = secondsToTimestamp(Math.floor(video.currentTime));
+    }
+
+    const optionsMenu = () => {
+        const menu = createOptionMenu();
+        
+        /**
+         * Handles removing the options menu when it loses focus
+         * @param {MouseEvent} ev The event
+         */
+        const loseFocusListener = (ev) => {
+            if (menu.contains(ev.target) || controlElements.options.contains(ev.target))
+                return;
+            menu.remove();
+            window.removeEventListener("click", loseFocusListener);
+        }
+    
+        window.addEventListener("click", loseFocusListener);
+
+        document.body.appendChild(menu);
+        const menuRect = menu.getBoundingClientRect();
+
+        menu.style.left = `${video.getBoundingClientRect().right - menuRect.width}px`;
+        menu.style.top = `${video.getBoundingClientRect().bottom - menuRect.height}px`;
     }
 
     //video events
@@ -157,7 +176,7 @@ function initVideo(video, controls) {
 
     controlElements.playButton.addEventListener("click", togglePlay);
     controlElements.progressBar.addEventListener("input", setTime);
-    controlElements.progressBar.addEventListener("change", setTime);
+    controlElements.options.addEventListener("click", optionsMenu);
     
     controls.appendChild(controlElements.playButton);
     controls.appendChild(controlElements.timestamp);

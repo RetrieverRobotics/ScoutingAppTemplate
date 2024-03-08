@@ -1,0 +1,30 @@
+/* cite: https://stackoverflow.com/a/38163892 */
+
+.video-controls {
+    width: 100%;
+    display: flex;
+}
+
+.video-controls * {
+    margin: 0 2.5px;
+}
+
+.video-controls button.video-player-control {
+    background-color: white;
+    border: none;
+    width: 16px;
+    height: 16px;
+}
+
+.video-controls button.video-player-control.video-player-play-button {
+    /* background-image: url(); TODO */
+    background-size: contain;
+}
+
+.video-controls .video-player-control.video-player-progress-bar {
+    flex-grow: 1;
+}
+
+.video-controls .video-player-control.video-player-options {
+    margin-left: auto;
+}
