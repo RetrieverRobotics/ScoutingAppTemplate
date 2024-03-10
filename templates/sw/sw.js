@@ -91,14 +91,17 @@ const LOCAL_VIDEO_PATHNAME = makeLocalVideoURL("").pathname;
 async function fetchClip(clipURL, docache) {
     let response;
     try {
-        response = await fetch(clipURL);
-        if (docache && response.status == 200) { //if status == 206 (first load) then dont use
-            const cache = await caches.open(CACHE_CLIPS);
-            cache.put(clipURL, response.clone());
+        if (isConnected) {
+            response = await fetch(clipURL);
+            if (docache && response.status == 200) { //if status == 206 (first load) then dont use
+                const cache = await caches.open(CACHE_CLIPS);
+                cache.put(clipURL, response.clone());
+            }
         }
+        else return await caches.match(clipURL);
     }
     catch(err) {
-        console.err(err);
+        console.error(err);
         const match = await caches.match(clipURL);
         if (docache && match)
             response = match;
