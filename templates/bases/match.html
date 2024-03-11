@@ -3,6 +3,7 @@
 {% block title %}{% endblock %}
 
 {% block styles %}
+{% include "videoplayer.preload.html" %}
 {{ from_style("css/videoplayer.css") }}
 {{ from_style("css/match.css") }}
 {% block extrastyles %}

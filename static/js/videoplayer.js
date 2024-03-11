@@ -12,6 +12,8 @@ const CLASS_OPTIONS_PLAYBACK_SPEED = "options-playback-speed";
 
 const CLASS_PLAY_BUTTON_PLAY = "play-button-play";
 const CLASS_PLAY_BUTTON_PAUSE = "play-button-pause";
+const CLASS_PLAY_BUTTON_REPLAY = "play-button-replay";
+const CLASS_VOLUME_MUTED = "volume-muted";
 const CLASS_OPTIONS_PLAYBACK_SPEED_INPUT = "playback-speed-input";
 
 const DAY = 86400;
@@ -62,10 +64,16 @@ function secondsToTimestamp(seconds) {
  */
 function newPlayerControls() {
     const playButton = document.createElement("button");
+    const playButtonIcon = document.createElement("img");
+    playButtonIcon.loading = "eager";
     playButton.classList.add(CLASS_VIDEO_PLAYER_CONTROL, CLASS_VIDEO_PLAYER_PLAY_BUTTON, CLASS_PLAY_BUTTON_PLAY);
+    playButton.appendChild(playButtonIcon);
 
     const volume = document.createElement("button");
+    const volumeIcon = document.createElement("img");
     volume.classList.add(CLASS_VIDEO_PLAYER_CONTROL, CLASS_VIDEO_PLAYER_VOLUME_CONTROL);
+    volumeIcon.loading = "eager";
+    volume.appendChild(volumeIcon);
 
     const timestamp = document.createElement("span");
     timestamp.innerText = "00:00";
@@ -81,8 +89,11 @@ function newPlayerControls() {
     progressBar.max = PROGRESS_BAR_MAX;
     progressBar.classList.add(CLASS_VIDEO_PLAYER_CONTROL, CLASS_VIDEO_PLAYER_PROGRESS_BAR);
 
-    const videoOptions = document.createElement("button");
-    videoOptions.classList.add(CLASS_VIDEO_PLAYER_CONTROL, CLASS_VIDEO_PLAYER_OPTIONS);
+    const options = document.createElement("button");
+    const optionsIcon = document.createElement("img");
+    options.classList.add(CLASS_VIDEO_PLAYER_CONTROL, CLASS_VIDEO_PLAYER_OPTIONS);
+    optionsIcon.loading = "eager";
+    options.appendChild(optionsIcon);
 
     return {
         playButton: playButton,
@@ -90,7 +101,7 @@ function newPlayerControls() {
         timestamp: timestamp,
         totalTime: totalTime,
         progressBar: progressBar,
-        options: videoOptions
+        options: options
     }
 }
 
@@ -124,6 +135,7 @@ function createOptionMenu(video) {
 
     //set values
 
+    playbackSpeedIcon.loading = "eager";
     playbackSpeedText.innerText = "Playback Speed";
     playbackSpeedInput.type = "number";
     playbackSpeedInput.value = video.playbackRate;
@@ -132,7 +144,8 @@ function createOptionMenu(video) {
     const linksplit = new URL(video.src).pathname.split("/");
     downloadButton.href = video.src;
     if (video.src.includes("/clips/load"))
-        downloadButton.download = `${linksplit[linksplit.length-2]}__${linksplit[linksplit.length-1]}` //download name = "{groupname}__{clipname}"
+    downloadButton.download = `${linksplit[linksplit.length-2]}__${linksplit[linksplit.length-1]}` //download name = "{groupname}__{clipname}"
+    downloadButton.loading = "eager";
     downloadButtonText.innerText = "Download";
 
     //event listeners
@@ -182,8 +195,8 @@ function createOptionMenu(video) {
 
     //combine elements
 
-    playbackSpeedFront.appendChild(playbackSpeedIcon);
     playbackSpeedFront.appendChild(playbackSpeedText);
+    playbackSpeed.appendChild(playbackSpeedIcon);
     playbackSpeed.appendChild(playbackSpeedFront);
     playbackSpeed.appendChild(playbackSpeedInput);
     const playbackSpeedLi = document.createElement("li");
@@ -191,7 +204,7 @@ function createOptionMenu(video) {
 
     downloadButton.appendChild(downloadButtonIcon);
     downloadButton.appendChild(downloadButtonText);
-    downloadLi = document.createElement("li");
+    const downloadLi = document.createElement("li");
     downloadLi.appendChild(downloadButton);
 
     optionsList.appendChild(playbackSpeedLi);
@@ -219,11 +232,19 @@ function initVideo(video, controls) {
 
     //event handlers
 
-    const updateControls = () => {
-        controlElements.playButton.classList.toggle(CLASS_PLAY_BUTTON_PLAY, video.paused || video.ended);
+    /**
+     * Update the play button to match the current video status
+     */
+    const updatePlayButton = () => {
+        controlElements.playButton.classList.toggle(CLASS_PLAY_BUTTON_PLAY, video.paused && !video.ended);
         controlElements.playButton.classList.toggle(CLASS_PLAY_BUTTON_PAUSE, !(video.paused || video.ended));
+        controlElements.playButton.classList.toggle(CLASS_PLAY_BUTTON_REPLAY, video.ended);
     }
 
+    /**
+     * Toggle the video between play and pause
+     * @param {MouseEvent} ev The event to handle
+     */
     const togglePlay = (ev) => {
         if (ev.button != 0) return;
 
@@ -237,12 +258,22 @@ function initVideo(video, controls) {
             video.pause();
     };
 
+    /**
+     * Update the video controls every time the video progresses (currentTime changes)
+     */
     const handleProgress = () => {
+        //progress bar and timetamp
         const percent = video.duration > 0 ? (video.currentTime / video.duration) : 0;
         controlElements.progressBar.value = Math.min(Math.floor(percent * PROGRESS_BAR_MAX), PROGRESS_BAR_MAX);
         controlElements.timestamp.innerText = secondsToTimestamp(Math.floor(video.currentTime));
+
+        //volume appearance
+        controlElements.volume.classList.toggle(CLASS_VOLUME_MUTED, video.muted);
     };
 
+    /**
+     * Begin seeking through the video; temporarily pauses the video if it was playing
+     */
     const beginSeekTime = () => {
         if (controlElements.progressBar.wasPlaying === undefined) {
             controlElements.progressBar.wasPlaying = !video.paused || video.ended;
@@ -250,6 +281,9 @@ function initVideo(video, controls) {
         }
     };
 
+    /**
+     * Set the video's currentTime to the seeked time
+     */
     const setTime = () => {
         const value = Number(controlElements.progressBar.value);
         const percent = Math.max(0, value / PROGRESS_BAR_MAX);
@@ -257,6 +291,9 @@ function initVideo(video, controls) {
         controlElements.timestamp.innerText = secondsToTimestamp(Math.floor(video.currentTime));
     };
 
+    /**
+     * Finish seeking through the video; undo the temporary pause if applicable
+     */
     const commitTime = () => {
         if (controlElements.progressBar.wasPlaying) {
             video.play();
@@ -264,6 +301,9 @@ function initVideo(video, controls) {
         }
     };
 
+    /**
+     * Display the options menu
+     */
     const optionsMenu = () => {
         //stop if theres already a menu
         if (video.parentElement.querySelector(`.${CLASS_VIDEO_PLAYER_OPTIONS_MENU}`) == null) {
@@ -298,13 +338,18 @@ function initVideo(video, controls) {
         controlElements.totalTime.innerText = secondsToTimestamp(Math.floor(video.duration));
     });
     video.addEventListener("click", togglePlay);
-    video.addEventListener("play", updateControls);
-    video.addEventListener("pause", updateControls);
+    video.addEventListener("play", updatePlayButton);
+    video.addEventListener("pause", updatePlayButton);
     video.addEventListener("timeupdate", handleProgress)
 
     //input events
 
     controlElements.playButton.addEventListener("click", togglePlay);
+
+    controlElements.volume.addEventListener("click", () => {
+        video.muted = !video.muted;
+        controlElements.volume.classList.toggle(CLASS_VOLUME_MUTED, video.muted);
+    })
 
     controlElements.progressBar.addEventListener("mousedown", beginSeekTime);
     controlElements.progressBar.addEventListener("input", setTime);
