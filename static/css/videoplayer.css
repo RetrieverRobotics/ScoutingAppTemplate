@@ -12,6 +12,7 @@
 .video-controls button.video-player-control {
     background-color: transparent;
     border: none;
+    cursor: pointer;
     width: 16px;
     min-width: 16px;
     height: 16px;
@@ -122,6 +123,19 @@
 .video-view .video-player-options-menu .options-playback-speed.playback-speed-input input {
     width: 4.5em;
     display: inline-block;
+    background-color: inherit;
+    color: inherit;
+    border: none;
+}
+
+.video-view .video-player-options-menu .options-playback-speed.playback-speed-input input::-webkit-outer-spin-button,
+.video-view .video-player-options-menu .options-playback-speed.playback-speed-input input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+}
+
+.video-view .video-player-options-menu .options-playback-speed.playback-speed-input input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 /* Download video */

@@ -1,7 +1,11 @@
 const ID_VIDEO_VIEW = "videoView";
 
+const CLASS_VIDEO_CONTAINER = "video-container";
 const CLASS_VIDEO_PLAYER = "video-player";
 const CLASS_VIDEO_CONTROLS = "video-controls";
+
+/** @type {CustomVideo} */
+var currentVideoPlayer = null;
 
 const SW_CURRENT = getSWURLNamespace("/current");
 
@@ -42,6 +46,16 @@ function setVideo(src) {
     return video;
 }
 
+/**
+ * Cause the current custom video player to lose focus.
+ * Use when handling events that should take away / restore focus from/to the video player.
+ * 
+ * @param {boolean|undefined} state The focus state for the custom video player to have (false by default)
+ */
+function setVideoFocus(state) {
+    currentVideoPlayer.container.classList.toggle(CLASS_VIDEO_FOCUSED, state ? true : false);
+}
+
 window.addEventListener("load", () => {
     getCurrentVideoURL().then(url => {
         if (url == null) {
@@ -50,7 +64,8 @@ window.addEventListener("load", () => {
         else {
             const video = setVideo(url);
             const controls = document.querySelector(`.${CLASS_VIDEO_CONTROLS}`);
-            initVideo(video, controls);
+            currentVideoPlayer = initVideo(video, controls, document.querySelector(`.${CLASS_VIDEO_CONTAINER}`));
+            setVideoFocus(true);
         }
     });
 

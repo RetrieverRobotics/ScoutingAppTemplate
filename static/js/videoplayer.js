@@ -15,6 +15,7 @@ const CLASS_PLAY_BUTTON_PAUSE = "play-button-pause";
 const CLASS_PLAY_BUTTON_REPLAY = "play-button-replay";
 const CLASS_VOLUME_MUTED = "volume-muted";
 const CLASS_OPTIONS_PLAYBACK_SPEED_INPUT = "playback-speed-input";
+const CLASS_VIDEO_FOCUSED = "video-focused";
 
 const DAY = 86400;
 const HOUR = 3600;
@@ -23,7 +24,7 @@ const MINUTE = 60;
 const PROGRESS_BAR_MAX = 100;
 
 /**
- * @typedef {object} ControlElements
+ * @typedef {object} ControlElements The elements that make up a `CustomVideo`'s controls
  * @property {HTMLButtonElement} playButton The play/pause button
  * @property {HTMLButtonElement} volume The volume controller
  * @property {HTMLSpanElement} timestamp The span displaying the current time
@@ -32,6 +33,13 @@ const PROGRESS_BAR_MAX = 100;
  * @property {HTMLButtonElement} options Video options
  */
 
+/**
+ * @typedef {object} CustomVideo A custom video player
+ * @property {Video} video The video element
+ * @property {HTMLDivElement} controls The container for all of the controls
+ * @property {ControlElements} controlElements All of the control elements for the video
+ * @property {HTMLDivElement} container The container for the video and control elements
+ */
 
 /**
  * Converts seconds into a timestamp, up to 4 spots.
@@ -221,8 +229,10 @@ function createOptionMenu(video) {
  * Initialize a video to use the custom video player
  * @param {HTMLVideoElement} video Video element to control
  * @param {HTMLDivElement} controls Div containing the video controls, should be empty (will be cleared if not empty)
+ * @param {HTMLDivElement} container Div containing the video and video controls
+ * @returns {CustomVideo} The initialized custom video
  */
-function initVideo(video, controls) {
+function initVideo(video, controls, container) {
     while (controls.children.length > 0)
         controls.removeChild(controls.firstChild);
 
@@ -332,6 +342,106 @@ function initVideo(video, controls) {
         }
     };
 
+    /**
+     * Apply focus to the video player (for keyboard controls)
+     * @param {MouseEvent} ev The event to handle
+     */
+    const checkFocus = (ev) => {
+        if (container.contains(ev.target))
+            container.classList.add(CLASS_VIDEO_FOCUSED);
+    }
+
+    /**
+     * Controls the video player with keypresses if the videoplayer is set as focused
+     * @param {KeyboardEvent} ev The event to handle
+     */
+    const keyboardControls = (ev) => {
+        if (!container.classList.contains(CLASS_VIDEO_FOCUSED)) return; //dont handle
+
+        switch(ev.key) {
+            case " ":
+            case "k":
+            case "MediaPlayPause":
+                if (video.paused || video.ended)
+                    video.play();
+                else video.pause();
+                break;
+            case "ArrowLeft":
+                if (video.ended) {
+                    video.currentTime = 0;
+                    video.play();
+                }
+                else
+                    video.currentTime = Math.max(0, video.currentTime - 5 * video.playbackRate);
+                break;
+            case "ArrowRight":
+                if (video.ended) {
+                    video.currentTime = 0;
+                    video.play();
+                }
+                else
+                    video.currentTime = Math.min(video.duration, video.currentTime + 5 * video.playbackRate);
+                break;
+            case "j":
+                if (video.ended) {
+                    video.currentTime = 0;
+                    video.play();
+                }
+                else
+                    video.currentTime = Math.max(0, video.currentTime - 10 * video.playbackRate);
+                break;
+            case "l":
+                if (video.ended) {
+                    video.currentTime = 0;
+                    video.play();
+                }
+                else
+                    video.currentTime = Math.min(video.duration, video.currentTime + 10 * video.playbackRate);
+                break;
+            case ",":
+                if (video.ended) {
+                    video.currentTime = 0;
+                    video.play();
+                }
+                else
+                    video.currentTime = Math.max(0, video.currentTime - 0.1 * video.playbackRate);
+                break;
+            case ".":
+                if (video.ended) {
+                    video.currentTime = 0;
+                    video.play();
+                }
+                else
+                    video.currentTime = Math.min(video.duration, video.currentTime + 0.1 * video.playbackRate);
+                break;
+            case "MediaPlay":
+                if (video.paused || video.ended)
+                    video.play();
+                break;
+            case "MediaPause":
+                if (!video.paused && !video.ended)
+                    video.pause();
+                break;
+            // TODO implement volume up/down? would need a slider added to the volume button
+            // case "AudioVolumeUp":
+            // case "VolumeUp":
+            //     break;
+            // case "AudioVolumeDown":
+            // case "VolumeDown":
+            //     break;
+            case "m":
+            case "AudioVolumeMute":
+            case "VolumeMute":
+                video.muted = !video.muted;
+                controlElements.volume.classList.toggle(CLASS_VOLUME_MUTED, video.muted);
+                break;
+            default:
+                return;
+        }
+
+        ev.stopPropagation(); //eat the event
+    } 
+
     //video events
 
     video.addEventListener("loadedmetadata", (ev) => {
@@ -356,6 +466,14 @@ function initVideo(video, controls) {
     controlElements.progressBar.addEventListener("change", commitTime);
 
     controlElements.options.addEventListener("click", optionsMenu);
+
+
+    //global events (need to be de-initialized)
+
+    window.addEventListener("click", checkFocus);
+    window.addEventListener("keydown", keyboardControls);
+    
+
     
     controls.appendChild(controlElements.playButton);
     controls.appendChild(controlElements.volume);
@@ -364,4 +482,24 @@ function initVideo(video, controls) {
     controls.appendChild(controlElements.totalTime);
     controls.appendChild(controlElements.progressBar);
     controls.appendChild(controlElements.options);
+
+    return {
+        video: video,
+        controls: controls,
+        controlElements: controlElements,
+        container: container,
+        globalEvents: {
+            checkFocus: checkFocus,
+            keyboardControls: keyboardControls
+        }
+    }
+}
+
+/**
+ * De-initialze a custom video player
+ * @param {CustomVideo} customVideo The initialized custom video to de-initialize
+ */
+function deInitVideo(customVideo) {
+    window.removeEventListener("click", customVideo.globalEvents.checkFocus);
+    window.removeEventListener("keydown", customVideo.globalEvents.keyboardControls);
 }
