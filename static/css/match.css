@@ -1,7 +1,20 @@
+.body-content {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+}
+
 .video-container {
-    width: 20vw;
     min-width: 220px;
-    height: auto;
+    margin: 5em;
+}
+
+.video-container.horizontal-video {
+    max-width: 30vw;
+}
+
+.video-container.vertical-video {
+    max-width: 20vw;
 }
 
 .video-container .video-view {

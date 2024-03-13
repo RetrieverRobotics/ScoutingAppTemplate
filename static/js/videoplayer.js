@@ -35,7 +35,7 @@ const PROGRESS_BAR_MAX = 100;
 
 /**
  * @typedef {object} CustomVideo A custom video player
- * @property {Video} video The video element
+ * @property {HTMLVideoElement} video The video element
  * @property {HTMLDivElement} controls The container for all of the controls
  * @property {ControlElements} controlElements All of the control elements for the video
  * @property {HTMLDivElement} container The container for the video and control elements

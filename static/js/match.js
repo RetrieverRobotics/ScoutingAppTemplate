@@ -3,6 +3,8 @@ const ID_VIDEO_VIEW = "videoView";
 const CLASS_VIDEO_CONTAINER = "video-container";
 const CLASS_VIDEO_PLAYER = "video-player";
 const CLASS_VIDEO_CONTROLS = "video-controls";
+const CLASS_HORIZONTAL_VIDEO = "horizontal-video";
+const CLASS_VERTICAL_VIDEO = "vertical-video";
 
 /** @type {CustomVideo} */
 var currentVideoPlayer = null;
@@ -57,6 +59,20 @@ function setVideoFocus(state) {
     currentVideoPlayer.container.classList.toggle(CLASS_VIDEO_FOCUSED, state ? true : false);
 }
 
+/**
+ * 
+ * @param {CustomVideo} videoPlayer 
+ */
+function controlVideoLayout(videoPlayer) {
+    videoPlayer.video.addEventListener("loadedmetadata", () => {
+        /** @type {HTMLDivElement} */
+        const videoRect = videoPlayer.video.getBoundingClientRect()
+        const horizontal = videoRect.width > videoRect.height;
+        videoPlayer.container.classList.toggle(CLASS_HORIZONTAL_VIDEO, horizontal);
+        videoPlayer.container.classList.toggle(CLASS_VERTICAL_VIDEO, !horizontal);
+    });
+}
+
 window.addEventListener("load", () => {
     getCurrentVideoURL().then(url => {
         if (url == null) {
@@ -67,8 +83,7 @@ window.addEventListener("load", () => {
             const controls = document.querySelector(`.${CLASS_VIDEO_CONTROLS}`);
             currentVideoPlayer = initVideo(video, controls, document.querySelector(`.${CLASS_VIDEO_CONTAINER}`));
             setVideoFocus(true);
+            controlVideoLayout(currentVideoPlayer);
         }
     });
-
-    
 });
