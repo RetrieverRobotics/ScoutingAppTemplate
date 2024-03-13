@@ -6,6 +6,7 @@ const CLASS_VIDEO_CONTROLS = "video-controls";
 
 /** @type {CustomVideo} */
 var currentVideoPlayer = null;
+var inputSystem = new InputSystem()
 
 const SW_CURRENT = getSWURLNamespace("/current");
 

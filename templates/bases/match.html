@@ -5,6 +5,7 @@
 {% block styles %}
 {% include "videoplayer.preload.html" %}
 {{ from_style("css/videoplayer.css") }}
+{{ from_style("css/inputsystem.css") }}
 {{ from_style("css/match.css") }}
 {% block extrastyles %}
 {% endblock %}
@@ -12,6 +13,7 @@
 
 {% block scripts %}
 {{ from_script("js/videoplayer.js") }}
+{{ from_script("js/inputsystem.js") }}
 {{ from_script("js/match.js") }}
 
 {% block extrascripts %}
@@ -26,9 +28,12 @@
         <div class="video-controls">
         </div>
     </div>
-    <div>
-        {% block scouting_inputs %}
+    <div class="input-content">
+        {% block inputs %}
         {% endblock %}
     </div>
+    <script>
+        inputSystem.root = document.querySelector(".input-content");
+    </script>
 </div>
 {% endblock %}
