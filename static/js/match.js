@@ -5,6 +5,7 @@ const CLASS_VIDEO_PLAYER = "video-player";
 const CLASS_VIDEO_CONTROLS = "video-controls";
 const CLASS_HORIZONTAL_VIDEO = "horizontal-video";
 const CLASS_VERTICAL_VIDEO = "vertical-video";
+const CLASS_INPUT_CONTENT = "input-content";
 
 /** @type {CustomVideo} */
 var currentVideoPlayer = null;
@@ -81,9 +82,16 @@ window.addEventListener("load", () => {
         else {
             const video = setVideo(url);
             const controls = document.querySelector(`.${CLASS_VIDEO_CONTROLS}`);
+            /** @type {CustomVideo} */
             currentVideoPlayer = initVideo(video, controls, document.querySelector(`.${CLASS_VIDEO_CONTAINER}`));
             setVideoFocus(true);
             controlVideoLayout(currentVideoPlayer);
+
+            
         }
+    });
+
+    document.querySelector(`.${CLASS_INPUT_CONTENT}`).addEventListener("click", () => {
+        setVideoFocus(false);
     });
 });
