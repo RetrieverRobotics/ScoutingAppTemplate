@@ -11,13 +11,11 @@
 #}
 */
 
-const LOCAL_STORAGE_SW_URL_NAMESPACE = "SW_URL_NAMESPACE";
 const CACHE_PAGES = "pages";
 const CACHE_CLIPS = "clips";
 
 const CURRENT_VIDEO = "video";
 const CHECK_CONNECTION_INTERVAL = 10000; //ms
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 //URL used to access the service worker
 const SW_URL = new URL(eval(`{{ url_for(request.endpoint) | tojson }}`), location.origin);
@@ -37,12 +35,14 @@ const ASSETS = eval(`{{ ASSETS|tojson }}`).map(value => new URL(value, location.
 
 const ERROR_VIDEO_SELECTION_400 = `{% include "sw/handle_video_selection_400.html" %}`;
 const ERROR_VIDEO_SELECTION_405 = `{% include "sw/handle_video_selection_405.html" %}`;
+const ERROR_CLIP_REQUEST_416 = `{% include "sw/handle_clip_request_416.html" %}`;
+const ERROR_CURRENT_REQUEST_405 = `{% include "sw/handle_current_request_405.html" %}`;
+const ERROR_CURRENT_GET_400 = `{% include "sw/handle_current_get_400.html" %}`;
 
 //state
 
 /** @type {Map<string, URL>} */
 const current = new Map();
-var useCache = false;
 var isConnected = true;
 var checkConnectionIntervalId = null;
 
@@ -230,6 +230,8 @@ async function handleClipSelection(request) {
 async function handleClipRequest(request, response) {
     const rangeHeader = request.headers.get("Range");
 
+    const videoContent = await response.blob();
+    const size = videoContent.size;
     //requested partial but returning non-partial from cache
     if (response.status != 206 && rangeHeader !== null) {
         //parse the range
@@ -239,8 +241,6 @@ async function handleClipRequest(request, response) {
             if (unit == "bytes") {
                 const rangeParts = unitParse[1].split("-", 2);
                 if (rangeParts.length == 2 && rangeParts[0].trim()) {
-                    const videoContent = await response.blob();
-                    const size = videoContent.size;
                     const start = Number(rangeParts[0]);
                     const end = rangeParts[1] ? Number(rangeParts[1]) : null;
                     const length = end == null ? size - start : end - start;
@@ -261,7 +261,14 @@ async function handleClipRequest(request, response) {
                 }
             }
         }
-        //TODO 416
+        return new Response(ERROR_CLIP_REQUEST_416, {
+            status: 416,
+            statusText: "Range Not Satisfiable",
+            headers: new Headers({
+                "Content-Range": `bytes */${size}`,
+                "Content-Type": "text/html"
+            })
+        });
     }
     else
         return response.clone();
@@ -323,20 +330,32 @@ async function handleFetch(ev) {
         //return getLocalVideo(url);
     }
     else if (url.pathname == SW_URL_NAMESPACE.pathname + "/current") {
-        if (request.method.toUpperCase() != "GET") {
-            //TODO 405 error
+        if (request.method.toUpperCase() == "GET") {
+            const key = url.searchParams.get("key");
+            if (key == null)
+                return new Response(ERROR_CURRENT_GET_400, {
+                    status: 400,
+                    statusText: "Bad Request",
+                    headers: new Headers({
+                        "Content-Type": "text/html"
+                    })
+                });
+            
+            const value = current.get(key);
+            return new Response(value === undefined ? "null" : JSON.stringify(value), {
+                status: 200,
+                statusText: "OK",
+                headers: new Headers({
+                    "Content-Type": "application/json; charset=utf-8"
+                })
+            });
         }
-        const key = url.searchParams.get("key");
-        if (key == null) {
-            //TODO 400 error
-        }
-        
-        const value = current.get(key);
-        return new Response(JSON.stringify(value), {
-            status: 200,
-            statusText: "OK",
+        else return new Response(ERROR_CURRENT_REQUEST_405, {
+            status: 405,
+            statusText: "Method Not Allowed",
             headers: new Headers({
-                "Content-Type": "application/json; charset=utf-8"
+                "Allow":"GET",
+                "Content-Type": "text/html"
             })
         });
     }

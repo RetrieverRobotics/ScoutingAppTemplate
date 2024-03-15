@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, Response, request, send_file
+from flask import Blueprint, Response, render_template, request, send_file
 import json
 import mimetypes
 import os
@@ -111,12 +111,13 @@ def load_clip(group_name:str, clip_name:str):
     range_header = request.headers.get("Range", None)
     if range_header is None:
         return send_file(path, download_name=clip_name, mimetype=mimetypes.guess_type(path)[0])
-    
+    elif not os.path.isfile(path):
+        return render_template("bases/error.html", ERROR_TITLE="Clips | 404", ERROR_NAME="Not Found", ERROR_CODE=404, ERROR_BODY="Unable to find the requested clip."), 400
+    size = os.path.getsize(path)
     unit_parts = range_header.split("=", 1)
     if unit_parts[0] == "bytes" and len(unit_parts) > 1:
         range_parts = unit_parts[1].split("-", 1)
         if len(range_parts) == 2 and range_parts[0].isdecimal():
-            size = os.path.getsize(path)
             start = int(range_parts[0])
             end = int(range_parts[1]) if range_parts[1] else None
             length = size - start if end is None else end - start
@@ -127,4 +128,11 @@ def load_clip(group_name:str, clip_name:str):
                 response.headers.add("Content-Range", f"bytes {start}-{start+length-1}/{size}")
                 
                 return response
-    return "TODO", 416
+            
+    return render_template(
+            "bases/error.html",
+            ERROR_TITLE="Clips | 416",
+            ERROR_NAME="Range Not Satisfiable",
+            ERROR_CODE=416,
+            ERROR_BODY="Unable to load part of the clip from the specified range."
+        ), 416, {"Content-Range": f"bytes */{size}"}

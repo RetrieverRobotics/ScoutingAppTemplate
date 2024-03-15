@@ -77,7 +77,7 @@ function controlVideoLayout(videoPlayer) {
 window.addEventListener("load", () => {
     getCurrentVideoURL().then(url => {
         if (url == null) {
-            //TODO error message
+            console.error("Could not load video URL");
         }
         else {
             const video = setVideo(url);

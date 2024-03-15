@@ -1,0 +1,6 @@
+{% set ERROR_CODE = 405 %}
+{% set ERROR_TITLE = "Service Worker | " ~ ERROR_CODE %}
+{% set ERROR_NAME = "Method Not Allowed" %}
+{% set ERROR_BODY = "Tried to access/modify the service worker's current values with an unsupported method." %}
+
+{% extends "bases/error.html" %}

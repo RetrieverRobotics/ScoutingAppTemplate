@@ -153,7 +153,7 @@ class InputSystem {
      * Add the specified event listeners to the input element
      * with the given name. Event listeners will be passed the element
      * @param {string} name The input name
-     * @param {TODO} events The event listeners to add to the element
+     * @param {object} events The event listeners to add to the element
      */
     addInput(name, events) {
         const elm = this.root.querySelector(`.${CLASS_INPUT_SYSTEM_INPUT}[name="${name}"]`);
