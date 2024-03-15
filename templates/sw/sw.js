@@ -307,6 +307,15 @@ async function handleInstall(ev) {
 }
 
 /**
+ * Handle an activation event
+ * @param {Event} ev The activation event to handle 
+ */
+async function handleActivate(ev) {
+    await clients.claim();
+    isConnected = await checkConnection();
+}
+
+/**
  * Handle a fetch event
  * @param {Event} ev The fetch event to handle
  * @returns {Promise<Response>} The response to respond with
@@ -321,14 +330,10 @@ async function handleFetch(ev) {
         if (response !== null)
             return response;
     }
-    else if (url.pathname.startsWith(`/clips`)) {
-        return handleClipRequest(request, await fetchClip(url, true));
-        //return fetchClip(url, true);
-    }
-    else if (url.pathname.startsWith(LOCAL_VIDEO_PATHNAME)) {
-        return handleClipRequest(request, await getLocalVideo(url));
-        //return getLocalVideo(url);
-    }
+    else if (url.pathname.startsWith(`/clips`))
+        return await handleClipRequest(request, await fetchClip(url, true));
+    else if (url.pathname.startsWith(LOCAL_VIDEO_PATHNAME))
+        return await handleClipRequest(request, await getLocalVideo(url));
     else if (url.pathname == SW_URL_NAMESPACE.pathname + "/current") {
         if (request.method.toUpperCase() == "GET") {
             const key = url.searchParams.get("key");
@@ -371,8 +376,10 @@ async function handleFetch(ev) {
             return response;
         }
         catch (err) {
-            if (!isConnected && match)
+            if (match) {
+                console.error(err);
                 return match;
+            }
             else throw err;
         }
     }
@@ -385,7 +392,7 @@ self.addEventListener("install", (ev) => {
 
 self.addEventListener("activate", (ev) => {
     console.log("Claiming clients");
-    ev.waitUntil(clients.claim());
+    ev.waitUntil(handleActivate(ev));
 })
 
 self.addEventListener("message", async (ev) => {
