@@ -1,0 +1,6 @@
+{% set ERROR_CODE = 416 %}
+{% set ERROR_TITLE = "Service Worker | " ~ ERROR_CODE %}
+{% set ERROR_NAME = "Range Not Satisfiable" %}
+{% set ERROR_BODY = "The service worker was unable to load part of the clip from the specified range." %}
+
+{% extends "bases/error.html" %}

@@ -1,0 +1,7 @@
+.input-system-page {
+    display: none;
+}
+
+.input-system-page.input-system-page-current {
+    display: inherit;
+}

@@ -23,7 +23,7 @@ window.addEventListener("load", () => {
      */
     function setVideoPreview(video) {
         while (videoPreview.children.length > 0)
-            videoPreview.removeChild(videoPreview.firstChild);
+            videoPreview.removeChild(videoPreview.firstElementChild);
 
         if (video === null) return;
 

@@ -1,0 +1,28 @@
+.body-content {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+}
+
+.video-container {
+    min-width: 220px;
+    margin: 5em;
+}
+
+.video-container.horizontal-video {
+    max-width: 30vw;
+}
+
+.video-container.vertical-video {
+    max-width: 20vw;
+}
+
+.video-container .video-view {
+    position: relative; /* allows absolutely positioned children to use this as a reference */
+    width: 100%;
+    height: 100%;
+}
+
+.video-container .video-view video.video-player {
+    width: 100%;
+}

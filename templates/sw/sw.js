@@ -17,8 +17,8 @@ const CACHE_CLIPS = "clips";
 const CURRENT_VIDEO = "video";
 const CHECK_CONNECTION_INTERVAL = 10000; //ms
 
-//the url used to access the service worker
-const SW_URL = eval(`{{ url_for(request.endpoint) | tojson }}`);
+//URL used to access the service worker
+const SW_URL = new URL(eval(`{{ url_for(request.endpoint) | tojson }}`), location.origin);
 
 //variables
 
@@ -35,12 +35,14 @@ const ASSETS = eval(`{{ ASSETS|tojson }}`).map(value => new URL(value, location.
 
 const ERROR_VIDEO_SELECTION_400 = `{% include "sw/handle_video_selection_400.html" %}`;
 const ERROR_VIDEO_SELECTION_405 = `{% include "sw/handle_video_selection_405.html" %}`;
+const ERROR_CLIP_REQUEST_416 = `{% include "sw/handle_clip_request_416.html" %}`;
+const ERROR_CURRENT_REQUEST_405 = `{% include "sw/handle_current_request_405.html" %}`;
+const ERROR_CURRENT_GET_400 = `{% include "sw/handle_current_get_400.html" %}`;
 
 //state
 
 /** @type {Map<string, URL>} */
 const current = new Map();
-var useCache = false;
 var isConnected = true;
 var checkConnectionIntervalId = null;
 
@@ -89,14 +91,17 @@ const LOCAL_VIDEO_PATHNAME = makeLocalVideoURL("").pathname;
 async function fetchClip(clipURL, docache) {
     let response;
     try {
-        response = await fetch(clipURL);
-        if (docache && response.status == 200) { //if status == 206 (first load) then dont use
-            const cache = await caches.open(CACHE_CLIPS);
-            cache.put(clipURL, response.clone());
+        if (isConnected) {
+            response = await fetch(clipURL);
+            if (docache && response.status == 200) { //if status == 206 (first load) then dont use
+                const cache = await caches.open(CACHE_CLIPS);
+                cache.put(clipURL, response.clone());
+            }
         }
+        else return await caches.match(clipURL);
     }
     catch(err) {
-        console.err(err);
+        console.error(err);
         const match = await caches.match(clipURL);
         if (docache && match)
             response = match;
@@ -152,7 +157,7 @@ async function handleClipSelection(request) {
         const clip_name = data.get("clip_name");
 
         //prioritize local file over clip
-        if (file) {
+        if (file && file.size) {
             //create the file response to cache
             const fileCache = new Response(file, {
                 status: 200,
@@ -217,6 +222,100 @@ async function handleClipSelection(request) {
 }
 
 /**
+ * Handle serving video content to the client (handles 206 Partial Content)
+ * @param {Request} request The incoming request
+ * @param {Response} response The cached video response
+ * @returns {Promise<Response>} The video content to serve (clone)
+ */
+async function handleClipRequest(request, response) {
+    const rangeHeader = request.headers.get("Range");
+
+    const videoContent = await response.blob();
+    const size = videoContent.size;
+    //requested partial but returning non-partial from cache
+    if (response.status != 206 && rangeHeader !== null) {
+        //parse the range
+        if (!rangeHeader.includes(",")) {
+            const unitParse = rangeHeader.split("=", 2);
+            const unit = unitParse[0].toLowerCase();
+            if (unit == "bytes") {
+                const rangeParts = unitParse[1].split("-", 2);
+                if (rangeParts.length == 2 && rangeParts[0].trim()) {
+                    const start = Number(rangeParts[0]);
+                    const end = rangeParts[1] ? Number(rangeParts[1]) : null;
+                    const length = end == null ? size - start : end - start;
+                    if (length > 0) {
+                        const range = videoContent.slice(start, start+length);
+                        const newResponse = new Response(range, {
+                            status: 206,
+                            statusText: "Partial Content",
+                            headers: response.headers
+                        });
+                        
+                        newResponse.headers.set("Content-Range", `bytes ${start}-${start+length-1}/${size}`);
+                        newResponse.headers.set("Content-Length", `${range.size}`);
+                        newResponse.headers.set("Content-Type", response.headers.get("Content-Type"));
+                        
+                        return newResponse;
+                    }
+                }
+            }
+        }
+        return new Response(ERROR_CLIP_REQUEST_416, {
+            status: 416,
+            statusText: "Range Not Satisfiable",
+            headers: new Headers({
+                "Content-Range": `bytes */${size}`,
+                "Content-Type": "text/html"
+            })
+        });
+    }
+    else
+        return response.clone();
+}
+
+/**
+ * Handle an install event
+ * @param {Event} ev The install event to handle
+ */
+async function handleInstall(ev) {
+    self.skipWaiting();
+
+    //set connection checking interval
+    if (checkConnectionIntervalId)
+        clearInterval(checkConnectionIntervalId);
+    checkConnectionIntervalId = setInterval(() => {
+        checkConnection().then(status => {
+            isConnected = status;
+        });
+    }, CHECK_CONNECTION_INTERVAL);
+
+    //pre-load assets
+    console.log(`Pre-loading assets (${ASSETS.length})`);
+    const cache = await caches.open(CACHE_PAGES);
+    console.log(`Caching assets in cache "${CACHE_PAGES}"`);
+    for (const asset of ASSETS) {
+        try {
+            const response = await fetch(asset);
+            if (response.ok)
+                cache.put(asset, response.clone());
+        }
+        catch(err) {
+            console.error(err);
+        }
+    }
+}
+
+/**
+ * Handle an activation event
+ * @param {Event} ev The activation event to handle 
+ */
+async function handleActivate(ev) {
+    await clients.claim();
+    isConnected = await checkConnection();
+}
+
+/**
  * Handle a fetch event
  * @param {Event} ev The fetch event to handle
  * @returns {Promise<Response>} The response to respond with
@@ -231,11 +330,39 @@ async function handleFetch(ev) {
         if (response !== null)
             return response;
     }
-    else if (url.pathname.startsWith(`/clips`)) {
-        return fetchClip(url, true);
-    }
-    else if (url.pathname.startsWith(LOCAL_VIDEO_PATHNAME)) {
-        return getLocalVideo(url);
+    else if (url.pathname.startsWith(`/clips`))
+        return await handleClipRequest(request, await fetchClip(url, true));
+    else if (url.pathname.startsWith(LOCAL_VIDEO_PATHNAME))
+        return await handleClipRequest(request, await getLocalVideo(url));
+    else if (url.pathname == SW_URL_NAMESPACE.pathname + "/current") {
+        if (request.method.toUpperCase() == "GET") {
+            const key = url.searchParams.get("key");
+            if (key == null)
+                return new Response(ERROR_CURRENT_GET_400, {
+                    status: 400,
+                    statusText: "Bad Request",
+                    headers: new Headers({
+                        "Content-Type": "text/html"
+                    })
+                });
+            
+            const value = current.get(key);
+            return new Response(value === undefined ? "null" : JSON.stringify(value), {
+                status: 200,
+                statusText: "OK",
+                headers: new Headers({
+                    "Content-Type": "application/json; charset=utf-8"
+                })
+            });
+        }
+        else return new Response(ERROR_CURRENT_REQUEST_405, {
+            status: 405,
+            statusText: "Method Not Allowed",
+            headers: new Headers({
+                "Allow":"GET",
+                "Content-Type": "text/html"
+            })
+        });
     }
 
     const cache = await caches.open(CACHE_PAGES);
@@ -249,8 +376,10 @@ async function handleFetch(ev) {
             return response;
         }
         catch (err) {
-            if (!isConnected && match)
+            if (match) {
+                console.error(err);
                 return match;
+            }
             else throw err;
         }
     }
@@ -258,31 +387,24 @@ async function handleFetch(ev) {
 }
 
 self.addEventListener("install", (ev) => {
-    if (checkConnectionIntervalId)
-        clearInterval(checkConnectionIntervalId);
-    
-    checkConnectionIntervalId = setInterval(() => {
-        checkConnection().then(status => {
-            isConnected = status;
-        });
-    }, CHECK_CONNECTION_INTERVAL);
+    ev.waitUntil(handleInstall(ev));
+});
 
-    //pre-load assets
-    console.log(`Pre-loading assets (${ASSETS.length})`);
-    ev.waitUntil(caches.open(CACHE_PAGES).then(cache => {
-        console.log(`Caching assets in cache "${CACHE_PAGES}"`);
-        for (const asset of ASSETS) {
-            try {
-                fetch(asset).then(response => {
-                    if (response.ok)
-                        cache.put(asset, response.clone())
-                });
-            }
-            catch(err) {
-                console.error(err);
-            }
-        }
-    }));
+self.addEventListener("activate", (ev) => {
+    console.log("Claiming clients");
+    ev.waitUntil(handleActivate(ev));
+})
+
+self.addEventListener("message", async (ev) => {
+    if (ev.origin != location.origin) return;
+    const msg = ev.data;
+    if (msg.name == "namespace/get") {
+        ev.source.postMessage({
+            name: "localstorage/set",
+            key: "SW_URL_NAMESPACE",
+            value: SW_URL_NAMESPACE.href
+        });
+    }
 });
 
 self.addEventListener("fetch", (ev) => {
