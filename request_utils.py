@@ -24,7 +24,7 @@ def expects_params(title:str, where:str, keys:list[str], methods:list[str]=("POS
                         ERROR_TITLE=title,
                         ERROR_CODE=code,
                         ERROR_NAME=werkzeug.http.HTTP_STATUS_CODES.get(code, "HTTP Error"),
-                        ERROR_BODY=f"Your POST request was missing the following keys: {','.join(missing)}."), 400
+                        ERROR_BODY=f"Your POST request was missing the following keys: {', '.join(missing)}."), 400
                     )
                     if headers:
                         r.headers.update(headers)
