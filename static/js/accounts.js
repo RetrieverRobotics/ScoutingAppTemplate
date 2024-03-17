@@ -39,7 +39,6 @@ function setValidityMessage(message, code) {
         setTimeout(() =>alert(message), 100);
 
     if (elm) {
-        console.log(elm, message, code);
         elm.setCustomValidity(message);
         elm.reportValidity();
     }
@@ -61,7 +60,6 @@ window.addEventListener("load", () => {
          * @param {InputEvent} ev The event to handle
          */
         const matches = (ev) => {
-            console.log(password, confirmPassword);
             if (password.value == confirmPassword.value)
                 confirmPassword.setCustomValidity("");
             else
