@@ -187,7 +187,7 @@ def validate_credentials_existing(email:str, password:str|bytes, name:str|None=N
 
         if account is None:
             return AccountValidityCheck.EMAIL_WRONG
-        elif name is not None and account.name != name: #TODO way of properly comparing names
+        elif name is not None and account.name != name:
             return AccountValidityCheck.NAME_WRONG
         elif not account.check_password(password):
             return AccountValidityCheck.PASSWORD_WRONG
