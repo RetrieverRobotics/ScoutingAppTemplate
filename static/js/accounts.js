@@ -46,10 +46,6 @@ function setValidityMessage(message, code) {
 
 window.addEventListener("load", () => {
     /** @type {HTMLInputElement} */
-    const name = document.querySelector(`input[name="name"]`);
-    /** @type {HTMLInputElement} */
-    const email = document.querySelector(`input[name="email"]`);
-    /** @type {HTMLInputElement} */
     const password = document.querySelector(`input[name="password"]`);
     /** @type {HTMLInputElement} */
     const confirmPassword = document.querySelector(`input[name="confirm_password"]`);
