@@ -8,6 +8,7 @@ import werkzeug.utils
 
 APP_INDEX_REDIRECT = "INDEX_REDIRECT"
 APP_INDEX_REDIRECT_ENDPOINT = "INDEX_REDIRECT_ENDPOINT"
+APP_USE_SW = "USE_SW"
 
 def get_secret_key():
     if os.path.isfile("secret_key"):
@@ -41,6 +42,7 @@ def from_script(path:str):
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 app.secret_key = get_secret_key()
+app.jinja_env.globals[APP_USE_SW] = False
 app.jinja_env.globals["include_template"] = include_template
 app.jinja_env.globals["include_static"] = include_static
 app.jinja_env.globals["as_style"] = as_style
@@ -63,6 +65,10 @@ def set_index_redirect(f):
     """Set the index route to redirect to the given endpoint function."""
     app.config[APP_INDEX_REDIRECT] = f
     return f
+
+def set_service_worker(f=...):
+    """Set the decorated route function as the route which responds with the service worker."""
+    app.jinja_env.globals[APP_USE_SW] = True
     
 @app.before_request
 def before():

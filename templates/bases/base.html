@@ -3,11 +3,15 @@
     <head>
         <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        {% if USE_SW %}
         <link rel="manifest" href="/manifest.json" />
+        {% endif %}
         {% block title %}{% endblock %}
         {{ from_style("css/base.css") }}
         {% block styles %}{% endblock %}
+        {% if USE_SW %}
         {{ from_script("js/register_sw.js") }}
+        {% endif %}
         {{ from_script("js/base.js") }}
         {% block scripts %}{% endblock %}
     </head>
