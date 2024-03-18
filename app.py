@@ -69,6 +69,7 @@ def set_index_redirect(f):
 def set_service_worker(f=...):
     """Set the decorated route function as the route which responds with the service worker."""
     app.jinja_env.globals[APP_USE_SW] = True
+    return f
     
 @app.before_request
 def before():
