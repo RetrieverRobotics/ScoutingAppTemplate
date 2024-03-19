@@ -1,3 +1,4 @@
+from config import ACCOUNTS_DATABASE_URI
 import database
 from datetime import datetime
 from enum import Enum
@@ -12,7 +13,6 @@ import traceback
 #NOTE: enable account through individual table create/drop; cite: https://stackoverflow.com/a/45287771
 
 ACCOUNT_TABLENAME = "accounts"
-ACCOUNT_DB_URI = "sqlite:///accounts.db"
 ACCOUNT_SLOTS_PATH = "create_account.slots"
 
 HEADER_CRED_VALIDITY = "Credential-Validity"
@@ -26,7 +26,7 @@ SALT_LENGTH = 128 #number of random bytes to generate for the salt
 
 logged_in:dict[int, int] = {} #session ID -> Account ID
 
-account_db = database.DB(ACCOUNT_DB_URI)
+account_db = database.DB(ACCOUNTS_DATABASE_URI)
 bp = Blueprint("accounts", __name__, url_prefix="/accounts")
 
 def get_logged_in(session_id:int)->int|None:
