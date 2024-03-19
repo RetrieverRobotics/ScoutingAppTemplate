@@ -1,10 +1,9 @@
+import database
 from flask import Flask, redirect, render_template, session, url_for
 import markupsafe
 import os
-import uuid
-import viewdata
+import request_utils
 import waitress
-import werkzeug.utils
 
 APP_INDEX_REDIRECT = "INDEX_REDIRECT"
 APP_INDEX_REDIRECT_ENDPOINT = "INDEX_REDIRECT_ENDPOINT"
@@ -52,8 +51,6 @@ app.jinja_env.globals["from_script"] = from_script
 app.config[APP_INDEX_REDIRECT] = None
 app.config[APP_INDEX_REDIRECT_ENDPOINT] = None
 
-app.register_blueprint(viewdata.bp)
-
 def _get_func_endpoint(f):
     for rule in app.url_map.iter_rules():
         if app.view_functions[rule.endpoint] is f:
@@ -66,8 +63,10 @@ def set_index_redirect(f):
     
 @app.before_request
 def before():
-    if "id" not in session:
-        session["id"] = uuid.uuid4().hex
+    if not (request_utils.SESSION_ID in session and session[request_utils.SESSION_ID] in database.web_sessions):
+        id = database.generate_id()
+        database.web_sessions.add(id)
+        session[request_utils.SESSION_ID] = id
 
 @app.get("/")
 def index():

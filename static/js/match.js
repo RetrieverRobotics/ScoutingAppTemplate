@@ -9,9 +9,23 @@ const CLASS_INPUT_CONTENT = "input-content";
 
 /** @type {CustomVideo} */
 var currentVideoPlayer = null;
+/** @type {InputSystem} */
 var inputSystem = new InputSystem()
 
 const SW_CURRENT = getSWURLNamespace("/current");
+
+/**
+ * InputSystem element-dependent event listener for autofilling account info
+ * @param {string} key The info to fill the element with
+ */
+function fillAccountInfo(key) {
+    return (ev, elm) => {
+        fetch("/accounts/info").then(r => r.json()).then(data => {
+            if (data != null)
+                elm.value = data[key];
+        });
+    }
+}
 
 /**
  * Get the current video URL from the service worker.

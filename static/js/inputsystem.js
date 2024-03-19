@@ -6,6 +6,7 @@ const CLASS_INPUT_SYSTEM_SUBMIT = "input-system-submit";
 
 const EVENT_NAVIGATE = "InputSystem::navigate";
 const EVENT_SUBMIT = "InputSystem::submit";
+const EVENT_START = "InputSystem::start";
 
 const ATTR_PAGE = "page";
 
@@ -60,6 +61,13 @@ class InputSystemNavigateEvent extends InputSystemEvent {
  */
 class InputSystemSubmissionEvent extends InputSystemEvent { }
 
+
+/**
+ * Input System event dispatched to all Input System inputs after the Input System
+ * has finished initializing
+ */
+class InputSystemStartEvent extends InputSystemEvent { }
+
 class InputSystem {
     /**
      * Creates a new `InputSystem` instance
@@ -107,7 +115,7 @@ class InputSystem {
             page.querySelectorAll(`.${CLASS_INPUT_SYSTEM_NAVIGATE}`).forEach(elm => {
                 elm.addEventListener("click", () => {
                     const pagename = elm.getAttribute(ATTR_PAGE);
-                    const navigateEvent = new InputSystemNavigateEvent(EVENT_NAVIGATE, {bubbles:false, cancelable:true, page:pagename});
+                    const navigateEvent = new InputSystemNavigateEvent(EVENT_NAVIGATE, {bubbles:false, cancelable:true, sys:this, page:pagename});
 
                     let doNav = true;
                     const inputs = page.querySelectorAll(`.${CLASS_INPUT_SYSTEM_INPUT}`);
@@ -133,7 +141,7 @@ class InputSystem {
         this.root.querySelectorAll(`.${CLASS_INPUT_SYSTEM_SUBMIT}`).forEach(submittionElm => {
             submittionElm.addEventListener("click", () => {
                 const inputs = this.root.querySelectorAll(`.${CLASS_INPUT_SYSTEM_INPUT}`);
-                const submitEvent = new InputSystemSubmissionEvent(EVENT_SUBMIT, {bubbles:false, cancelable:true})
+                const submitEvent = new InputSystemSubmissionEvent(EVENT_SUBMIT, {bubbles:false, cancelable:true, sys:this})
 
                 let doSubmit = true;
                 for (let i = 0; i < inputs.length; i++)
@@ -146,6 +154,15 @@ class InputSystem {
                 else if (!doSubmit && cancel)
                     cancel(); //NOTE: to get invalid inputs, use `inputSystem.root.querySelectAll(".input-system-input:invalid")`
             });
+        });
+    }
+
+    /**
+     * Dispatches the start event to each Input System Input
+     */
+    start() {
+        this.root.querySelectorAll(`.${CLASS_INPUT_SYSTEM_INPUT}`).forEach(elm => {
+            elm.dispatchEvent(new InputSystemStartEvent(EVENT_START, {bubbles:false, cancelable:false, sys:this}));
         });
     }
 

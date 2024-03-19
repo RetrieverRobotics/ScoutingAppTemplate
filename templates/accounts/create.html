@@ -1,0 +1,34 @@
+{% extends "bases/base.html" %}
+{% block title %}<title>{% if PAGE_TITLE is defined %}{{ PAGE_TITLE }}{% else %}Create Account{% endif %}</title>{% endblock %}
+{% block styles %}{% endblock %}
+{% block scritps %}
+<script>
+const VALIDITY_MESSAGE = `{% if VALIDITY_MESSAGE is defined %}{{ VALIDITY_MESSAGE }}{% endif %}`;
+const VALIDITY_CODE = `{% if VALIDITY_CODE is defined %}{{ VALIDITY_CODE }}{% endif %}`;
+</script>
+{{ from_script("js/accounts.js") }}
+{% endblock %}
+{% block body %}
+    <div>
+        <h1>Login</h1>
+        <form
+            {% if SUBMISSION_ACTION %}
+            action="{{ SUBMISSION_ACTION }}"
+            {% else %}
+            action="{{ url_for(request.endpoint, **request.args) }}"
+            {% endif %}
+            method="post"
+        >
+            <input name="slot_id" type="hidden" value="{{ request.args.get('slot_id', '') }}">
+            <p><label>Name</label></p>
+            <p><input name="name" value="{{ request.args.get('name', '') }}" required/></p>
+            <p><label>Email</label></p>
+            <p><input name="email" type="email" value="{{ request.args.get('email', '') }}" required/></p>
+            <p><label>Password</label></p>
+            <p><input name="password" type="password" required/></p>
+            <p><label>Confirm Password</label></p>
+            <p><input name="confirm_password" type="password" required/></p>
+            <p><button type="submit">Login</button></p>
+        </form>
+    </div>
+{% endblock %}
