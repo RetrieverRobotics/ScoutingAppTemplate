@@ -1,11 +1,10 @@
+from config import CLIPS_DIR
 from datetime import datetime
 from flask import Blueprint, Response, render_template, request, send_file
 import json
 import mimetypes
 import os
 from typing import NamedTuple
-
-CLIPS_DIR = "clips"
 
 GROUP_NAME_SEP = "."
 GROUP_NAME_DATE_FORMAT = "%Y-%m-%d"
