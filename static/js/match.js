@@ -12,8 +12,6 @@ var currentVideoPlayer = null;
 /** @type {InputSystem} */
 var inputSystem = new InputSystem()
 
-const SW_CURRENT = getSWURLNamespace("/current");
-
 /**
  * InputSystem element-dependent event listener for autofilling account info
  * @param {string} key The info to fill the element with
@@ -28,18 +26,11 @@ function fillAccountInfo(key) {
 }
 
 /**
- * Get the current video URL from the service worker.
+ * Get the current video URL from local storage
  * @returns {string|null} The URL that the video is stored under.
  */
-async function getCurrentVideoURL() {
-    if (SW_CURRENT == null) return null;
-    const copyURL = new URL(SW_CURRENT.href);
-    copyURL.searchParams.append("key", "video");
-    const response = await fetch(copyURL);
-    if (response.ok && response.headers.get("Content-Type").startsWith("application/json")) {
-        return await response.json();
-    }
-    return null;
+function getCurrentVideoURL() {
+    return localStorage.getItem(CURRENT_VIDEO);
 }
 
 /**
@@ -89,22 +80,19 @@ function controlVideoLayout(videoPlayer) {
 }
 
 window.addEventListener("load", () => {
-    getCurrentVideoURL().then(url => {
-        if (url == null) {
-            console.error("Could not load video URL");
-        }
-        else {
-            const video = setVideo(url);
-            const controls = document.querySelector(`.${CLASS_VIDEO_CONTROLS}`);
-            /** @type {CustomVideo} */
-            currentVideoPlayer = initVideo(video, controls, document.querySelector(`.${CLASS_VIDEO_CONTAINER}`));
-            setVideoFocus(true);
-            controlVideoLayout(currentVideoPlayer);
+    const url = getCurrentVideoURL();
+    if (url == null)
+        console.error("Could not load video URL");
+    else {
+        const video = setVideo(url);
+        const controls = document.querySelector(`.${CLASS_VIDEO_CONTROLS}`);
+        /** @type {CustomVideo} */
+        currentVideoPlayer = initVideo(video, controls, document.querySelector(`.${CLASS_VIDEO_CONTAINER}`));
+        setVideoFocus(true);
+        controlVideoLayout(currentVideoPlayer);
 
-            
-        }
-    });
-
+        
+    }
     document.querySelector(`.${CLASS_INPUT_CONTENT}`).addEventListener("click", () => {
         setVideoFocus(false);
     });
