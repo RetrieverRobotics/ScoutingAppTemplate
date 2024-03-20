@@ -4,7 +4,6 @@
 
     Variables:
 
-    SW_URL_NAMESPACE:           The URL namespace for the service worker to own. Defaults to "client" (optional)
     VIDEO_SELECTION_OUTPUT:     The URL to receive output from the select_video template on
     VIDEO_SELECTION_REDIRECT:   The URL to redirect to after receiving video selection output
     ASSETS:                     Array of URLs to consider as assets; will be pre-cacheed when the service worker is installed
@@ -22,7 +21,6 @@ const SW_URL = new URL(eval(`{{ url_for(request.endpoint) | tojson }}`), locatio
 
 //variables
 
-const SW_URL_NAMESPACE = new URL(eval(`{% if SW_URL_NAMESPACE is defined %}{{ SW_URL_NAMESPACE|tojson }}{% else %}"client"{% endif %}`), location.origin);
 const VIDEO_SELECTION_OUTPUT = new URL(eval(`{{ VIDEO_SELECTION_OUTPUT|tojson }}`), location.origin);
 
 /** @type {object} */
@@ -36,8 +34,6 @@ const ASSETS = eval(`{{ ASSETS|tojson }}`).map(value => new URL(value, location.
 const ERROR_VIDEO_SELECTION_400 = `{% include "sw/handle_video_selection_400.html" %}`;
 const ERROR_VIDEO_SELECTION_405 = `{% include "sw/handle_video_selection_405.html" %}`;
 const ERROR_CLIP_REQUEST_416 = `{% include "sw/handle_clip_request_416.html" %}`;
-const ERROR_CURRENT_REQUEST_405 = `{% include "sw/handle_current_request_405.html" %}`;
-const ERROR_CURRENT_GET_400 = `{% include "sw/handle_current_get_400.html" %}`;
 
 //state
 
@@ -62,6 +58,17 @@ async function checkConnection() {
 }
 
 /**
+ * Set the current video URL for the service worker and client
+ * @param {URL} url URL to set
+ */
+async function setCurrentVideo(url) {
+    current.set(CURRENT_VIDEO, url);
+    const all = await self.clients.matchAll();
+    for (const client of all)
+        client.postMessage({name:"video/set", value:url.href});
+}
+
+/**
  * Create a clip URL
  * @param {string} clip_group The clip group name
  * @param {string} clip_name The clip name
@@ -77,7 +84,7 @@ function makeClipURL(clip_group, clip_name) {
  * @returns {URL} The local video URL
  */
 function makeLocalVideoURL(filename) {
-    return new URL(`${SW_URL_NAMESPACE}/localvideo/${filename}`, location.origin);
+    return new URL(`${SW_URL}/localvideo/${filename}`, location.origin);
 }
 
 const LOCAL_VIDEO_PATHNAME = makeLocalVideoURL("").pathname;
@@ -112,7 +119,7 @@ async function fetchClip(clipURL, docache) {
 }
 
 /**
- * Caches the local video in clips cache under the service worker url namespace
+ * Caches the local video in clips cache
  * @param {string|URL} name The local video's filename / service worker url
  * @param {Response|null} video The video response to store, or null to delete
  * @returns {Promise<boolean>} If the video was set/deleted successfully
@@ -168,12 +175,12 @@ async function handleClipSelection(request) {
             });
             const lvidURL = makeLocalVideoURL(file.name);
             await setLocalVideo(lvidURL, fileCache); //put it in cache
-            current.set(CURRENT_VIDEO, lvidURL); //set this video to the current video being used
+            setCurrentVideo(lvidURL);
         }
         else if (clip_group && clip_name) {
             const clipURL = makeClipURL(clip_group, clip_name);
             await fetchClip(clipURL, true); //fetch to get it in the cache
-            current.set(CURRENT_VIDEO, clipURL); //set this video to current
+            setCurrentVideo(clipURL);
         }
         else return new Response(ERROR_VIDEO_SELECTION_400, {
             status: 400,
@@ -193,13 +200,13 @@ async function handleClipSelection(request) {
             const lvidURL = makeLocalVideoURL(filename);
             const fileCache = await getLocalVideo(lvidURL);
             if (fileCache)
-                current.set(CURRENT_VIDEO, lvidURL);
+                setCurrentVideo(lvidURL);
             else throw new Error(`Unknown local video "${filename}".`);
         }
         else if (clip_group && clip_name) {
             const clipURL = makeClipURL(clip_group, clip_name);
             await fetchClip(clipURL, true);
-            current.set(CURRENT_VIDEO, clipURL);
+            setCurrentVideo(clipURL);
         }
         else return new Response(ERROR_VIDEO_SELECTION_400, {
             status: 400,
@@ -230,10 +237,10 @@ async function handleClipSelection(request) {
 async function handleClipRequest(request, response) {
     const rangeHeader = request.headers.get("Range");
 
-    const videoContent = await response.blob();
-    const size = videoContent.size;
     //requested partial but returning non-partial from cache
     if (response.status != 206 && rangeHeader !== null) {
+        const videoContent = await response.blob();
+        const size = videoContent.size;
         //parse the range
         if (!rangeHeader.includes(",")) {
             const unitParse = rangeHeader.split("=", 2);
@@ -334,36 +341,6 @@ async function handleFetch(ev) {
         return await handleClipRequest(request, await fetchClip(url, true));
     else if (url.pathname.startsWith(LOCAL_VIDEO_PATHNAME))
         return await handleClipRequest(request, await getLocalVideo(url));
-    else if (url.pathname == SW_URL_NAMESPACE.pathname + "/current") {
-        if (request.method.toUpperCase() == "GET") {
-            const key = url.searchParams.get("key");
-            if (key == null)
-                return new Response(ERROR_CURRENT_GET_400, {
-                    status: 400,
-                    statusText: "Bad Request",
-                    headers: new Headers({
-                        "Content-Type": "text/html"
-                    })
-                });
-            
-            const value = current.get(key);
-            return new Response(value === undefined ? "null" : JSON.stringify(value), {
-                status: 200,
-                statusText: "OK",
-                headers: new Headers({
-                    "Content-Type": "application/json; charset=utf-8"
-                })
-            });
-        }
-        else return new Response(ERROR_CURRENT_REQUEST_405, {
-            status: 405,
-            statusText: "Method Not Allowed",
-            headers: new Headers({
-                "Allow":"GET",
-                "Content-Type": "text/html"
-            })
-        });
-    }
 
     const cache = await caches.open(CACHE_PAGES);
     const match = await cache.match(request);
@@ -397,14 +374,17 @@ self.addEventListener("activate", (ev) => {
 
 self.addEventListener("message", async (ev) => {
     if (ev.origin != location.origin) return;
+
     const msg = ev.data;
-    if (msg.name == "namespace/get") {
+    if (msg.name == "video/get") {
+        const url = current.get(CURRENT_VIDEO);
         ev.source.postMessage({
-            name: "localstorage/set",
-            key: "SW_URL_NAMESPACE",
-            value: SW_URL_NAMESPACE.href
+            name: "video/set",
+            value: url === undefined ? null : url.href
         });
     }
+    else if (msg.name == "video/set")
+        current.set(CURRENT_VIDEO, msg.value == null ? null : new URL(msg.value));
 });
 
 self.addEventListener("fetch", (ev) => {
