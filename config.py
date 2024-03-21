@@ -7,9 +7,10 @@ to fit the implementation.
 
 """
 
-# Accounts
+# DB
 
-ACCOUNTS_DATABASE_URI = "sqlite:///accounts.db" #The URI to use when opening the accounts database
+DB_COMP_URI = "sqlite:///competition.db"
+DB_SHARED_URI = "sqlite:///shared.db"
 
 # Clips
 

@@ -1,10 +1,10 @@
+from config import DB_COMP_URI, DB_SHARED_URI
 from datetime import datetime, timezone
 import hashlib
 import sqlalchemy
 import sqlalchemy.orm
 from typing import Generator
 
-DB_URI = "sqlite:///.db"
 NUM_GENERATOR_MAX = 1000 #must be a power of 10
 HASH_ENCODING = "utf-8"
 HASH_TIMES_MAX = 40
@@ -72,10 +72,24 @@ class DB:
         if self.session is not None:
             self.session.close()
             self.session = None
-
-
-current = DB(DB_URI)
+            
+            
+comp_db = DB(DB_COMP_URI)
+shared_db = DB(DB_SHARED_URI)
 web_sessions:set[int] = set() #IDs that have been generated for web sessions
+
+def create_table(table:sqlalchemy.Table, engine:sqlalchemy.engine.Engine):
+    """
+    Adds the table's metadata to the database.
+    """
+    table.create(engine, checkfirst=True)
+
+@classmethod
+def drop_table(table:sqlalchemy.Table, engine:sqlalchemy.engine.Engine):
+    """
+    Drops the table's metadata from the database.
+    """
+    table.drop(engine, checkfirst=True)
 
 
 def hash_password(raw:str, salt:bytes, n=HASH_N, r=HASH_R, p=HASH_P, length:int=HASH_DK_LEN)->bytes:
