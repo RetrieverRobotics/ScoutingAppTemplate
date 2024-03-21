@@ -28,9 +28,15 @@ class MiscStructure:
             self._updated = True #set after it happens, an error should prevent this from being set
 
     def getstate(self)->Any:
+        """
+        Get the structure's state.
+        """
         raise NotImplementedError
     
     def setstate(self, state:Any):
+        """
+        Update the MiscStructure object with new state.
+        """
         self._updated = False
 
 
@@ -340,12 +346,6 @@ class Team(MiscStructure):
         """
         return self.years.get(year, None)
     
-    def getstate(self)->Any:
-        d = self.__dict__.copy()
-        d["years"] = {str(num):year.__dict__.copy() for num, year in self.years.items()}
-        d["socials"] = [social.__dict__.copy() for social in self.socials]
-        return d
-    
     def get_robots(self):
         """
         Find all robots that belong to this team.
@@ -353,6 +353,12 @@ class Team(MiscStructure):
         for robot in robots_group.children.values():
             if robot.team_id == self.id:
                 yield robot
+    
+    def getstate(self)->Any:
+        d = self.__dict__.copy()
+        d["years"] = {str(num):year.__dict__.copy() for num, year in self.years.items()}
+        d["socials"] = [social.__dict__.copy() for social in self.socials]
+        return d
 
     def setstate(self, state:dict[str]):
         self.__init__(**state)
