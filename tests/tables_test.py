@@ -4,9 +4,11 @@ imports_for_testing()
 import accounts
 import config
 import database
+from datetime import datetime, timezone
 import comp_tables
 import os
 from sqlalchemy import Boolean, Column, Integer
+import string
 
 CLEANUP = True
 
@@ -40,7 +42,18 @@ def main():
 
     #do stuff ...
 
-    database.comp_db.session.add(CompData(database.generate_id(), database.generate_id(), database.generate_id(), "A", 10, True))
+    host = object() #whatever goes here
+    host.id = database.generate_id() #DEBUG init
+
+    scouter = accounts.Account.create(name="Jake", email="name@mail.domain", raw_password="s0_Secur3!")
+    database.shared_db.session.add(scouter)
+
+    match1 = comp_tables.Match(id=database.generate_id(), host_id=host.id, date=datetime.now(timezone.utc), type=comp_tables.MatchType.QUAL, number=1)
+    database.comp_db.session.add(match1)
+
+    for i in range(4): #4 robots a match
+        performance = CompData(id=database.generate_id(), match_id=match1.id, account_id=scouter.id, robot=string.ascii_uppercase[i%len(string.ascii_uppercase)], scores=10, is_win=True)
+        database.comp_db.session.add(performance)
 
 
     #commit remaining changes
