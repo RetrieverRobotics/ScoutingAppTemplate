@@ -41,8 +41,13 @@ def test_after():
     return "<p>It worked!</p>"
 
 @bp.get("/sw.js")
+@app.set_service_worker
 def service_worker():
-    assets = ["/", "/test", "/test/after"]
+    assets = {
+        "/": {"behavior": "never"},
+        "/test": {"behavior": "method", "methods":["get"]},
+        "/test/after": {"behavior": "successful"}
+    }
     return render_template(
         "sw/sw.js",
         SW_URL_NAMESPACE=SW_NAMESPACE,
