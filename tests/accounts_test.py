@@ -4,6 +4,7 @@ imports_for_testing()
 import accounts
 import app
 import clips
+import database
 from flask import Blueprint, render_template_string
 
 bp = Blueprint("test", __name__)
@@ -13,6 +14,7 @@ def _current():
     return "\"/clips/load/test_comp.2023-02-16/match_1.mp4\"", 200, {"Content-Type":"application/json"} 
 
 @bp.get("/sw.js")
+@app.set_service_worker
 def _sw():
     return "", 200, {"Content-Type": "application/javascript"}
 
@@ -131,11 +133,11 @@ if __name__ == "__main__":
     #start database sessions
 
     accounts.Account.create_table()
-    accounts.account_db.create_session()
+    database.shared_db.create_session()
 
     app.serve(threads=48)
 
     #close database sessions
 
-    accounts.account_db.session.commit()
-    accounts.account_db.close_session()
+    database.shared_db.session.commit()
+    database.shared_db.close_session()
