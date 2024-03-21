@@ -15,3 +15,9 @@ DB_SHARED_URI = "sqlite:///shared.db"
 # Clips
 
 CLIPS_DIR = "clips"
+
+#Misc Structures
+
+STRUCT_HOSTS_SCOPE = "hosts"
+STRUCT_ROBOTS_SCOPE = "robots.json"
+STRUCT_TEAMS_SCOPE = "teams"

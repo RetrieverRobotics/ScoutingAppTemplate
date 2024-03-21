@@ -3,6 +3,7 @@ import clips
 import database
 from datetime import datetime
 from enum import Enum
+import misc_structures
 import sqlalchemy
 from sqlalchemy import Column, DateTime, Integer, String
 import sqlalchemy.orm
@@ -75,13 +76,19 @@ class Match(database.comp_db.Base):
         self.type = type
         self.number = number
 
-    def get_clip_path(self, comp_name:str, file_format:str):
+    def get_host(self):
         """
-        Construct a clip path using data from this match, plus a competition name and file format.
+        Gets the Team with the stored `host_id`.
+        """
+        return misc_structures.hosts_group.get(self.host_id)
+
+    def get_clip_path(self, event_name:str, file_format:str):
+        """
+        Construct a clip path using data from this match, plus a event name and file format.
 
         It should be noted that clip paths contructed with this method are not guaranteed to exist.
         """
-        return clips.construct_path(comp_name, self.date, self.type, self.number, file_format)
+        return clips.construct_path(event_name, self.date, self.type, self.number, file_format)
     
 
 class Profile(database.comp_db.Base):
@@ -110,7 +117,7 @@ class Profile(database.comp_db.Base):
     id = Column(Integer, primary_key=True)
     match_id = Column(Integer, nullable=False)
     account_id = Column(Integer, nullable=True) #TODO consider making nullable depending on if accounts are enabled
-    robot = Column(String(ROBOT_DESIGNATION_LENGTH), nullable=False)
+    robot_id = Column(String(ROBOT_DESIGNATION_LENGTH), nullable=False) #links to misc data "Robots"
 
     def __init__(self, id:int, match_id:int, account_id:int|None, robot:str):
         self.id = id
@@ -129,3 +136,9 @@ class Profile(database.comp_db.Base):
         Get the Match with the stored `match_id`.
         """
         return database.comp_db.session.query(Match).filter(Match.id == self.match_id).first()
+    
+    def get_robot(self):
+        """
+        Get the Robot with the stored `robot_id`.
+        """
+        return misc_structures.robots_group.get(self.robot_id)
