@@ -13,12 +13,12 @@ CLIP_NAME_SEP = "_"
 bp = Blueprint("clips", __name__, url_prefix="/clips")
 
 def parse_group_name(name:str)->tuple[str, datetime]:
-    """Parses a group name into a competition name and the utc datetime for when the competition happened."""
-    compname, datestr = name.rsplit(GROUP_NAME_SEP, 1) #"competition_name.%Y-%m-%d"
+    """Parses a group name into an event name and the utc datetime for when the event happened."""
+    compname, datestr = name.rsplit(GROUP_NAME_SEP, 1) #"event_name.%Y-%m-%d"
     return compname, datetime.strptime(datestr, GROUP_NAME_DATE_FORMAT)
 
 def format_group_name(name:str, dt:datetime)->str:
-    """Formats a competition name and competition date into a group name."""
+    """Formats an event name and event date into a group name."""
     return GROUP_NAME_SEP.join((name, dt.strftime(GROUP_NAME_DATE_FORMAT)))
 
 def parse_clip_name(name:str)->tuple[int, int]|None:
@@ -75,7 +75,7 @@ class ClipGroup(NamedTuple):
     """
     Named tuple for containing detailed clip group data.
 
-    `name`          - The group name (competition name)
+    `name`          - The group name (event name)
 
     `date`          - Date when the match happened
 
@@ -95,9 +95,9 @@ def detailed_clips_tree(tree:dict[str, list[str]])->dict[str, ClipGroup]:
         detailed[groupname] = group
     return detailed
 
-def construct_path(comp_name:str, dt:datetime, type:int, number:int, file_format:str|None=None):
+def construct_path(event_name:str, dt:datetime, type:int, number:int, file_format:str|None=None):
     """Construct a path containing the clip group and clip given their components."""
-    group_name = format_group_name(comp_name, dt)
+    group_name = format_group_name(event_name, dt)
     clip_name = format_clip_name(type, number, file_format)
     return os.path.join(group_name, clip_name)
 
