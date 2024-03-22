@@ -3,7 +3,7 @@ import clips
 import database
 from datetime import datetime
 from enum import Enum
-import misc_structs
+import structs
 import sqlalchemy
 from sqlalchemy import Column, DateTime, Integer, String
 import sqlalchemy.orm
@@ -91,7 +91,7 @@ class Match(database.comp_db.Base):
         """
         Gets the Team with the stored `host_id`.
         """
-        return misc_structs.hosts_group.get(self.host_id)
+        return structs.hosts_group.get(self.host_id)
 
     def get_clip_path(self, event_name:str, file_format:str):
         """
@@ -153,4 +153,4 @@ class Profile(database.comp_db.Base):
         """
         Get the Robot with the stored `robot_id`.
         """
-        return misc_structs.robots_group.get(self.robot_id)
+        return structs.robots_group.get(self.robot_id)

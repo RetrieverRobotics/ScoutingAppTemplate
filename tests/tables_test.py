@@ -5,8 +5,8 @@ import accounts
 import config
 import database
 from datetime import datetime
-import comp_tables
-import misc_structs
+import tables
+import structs
 import os
 import random
 import shutil
@@ -14,7 +14,7 @@ from sqlalchemy import Boolean, Column, Integer
 
 CLEANUP = True
 
-class CompData(comp_tables.Profile):
+class CompData(tables.Profile):
 
     __tablename__ = "profile"
 
@@ -54,14 +54,14 @@ def main():
     #create tables
 
     accounts.Account.create_table()
-    comp_tables.Match.create_table()
+    tables.Match.create_table()
     CompData.create_table()
 
     #open sessions
 
-    misc_structs.hosts_group.open()
-    misc_structs.teams_group.open()
-    misc_structs.robots_group.open()
+    structs.hosts_group.open()
+    structs.teams_group.open()
+    structs.robots_group.open()
 
     database.shared_db.create_session()
     database.comp_db.create_session()
@@ -70,13 +70,13 @@ def main():
     #do stuff ...
 
     #if theres already data generated
-    if misc_structs.hosts_group:
+    if structs.hosts_group:
         print("accounts:", database.shared_db.session.query(accounts.Account).count())
-        print("match:", database.comp_db.session.query(comp_tables.Match).count())
+        print("match:", database.comp_db.session.query(tables.Match).count())
         print("profiles:", database.comp_db.session.query(CompData).count())
-        print("hosts:", sum(1 for _ in misc_structs.hosts_group))
-        print("teams:", sum(1 for _ in misc_structs.teams_group))
-        print("robots:", sum(1 for _ in misc_structs.robots_group))
+        print("hosts:", sum(1 for _ in structs.hosts_group))
+        print("teams:", sum(1 for _ in structs.teams_group))
+        print("robots:", sum(1 for _ in structs.robots_group))
     else:
 
         #timers
@@ -95,28 +95,28 @@ def main():
         
         host_time.start()
 
-        team_host = misc_structs.Team.create(
+        team_host = structs.Team.create(
             "Team Host",
-            {2023: misc_structs.TeamYear(20, 5, "wicked", "tricked", "offense", "chill", "fast", "none", "awesomesauce", new_value="test"),
-            2024: misc_structs.TeamYear(19, 1, "wicked", "tricked", "offense", "chill", "fast", "none", "awesomesauce", new_value="test").__dict__.copy()},
-            [misc_structs.TeamSocial("service1", "username", 12345, new_value="test"), misc_structs.TeamSocial("service2", "username", 12345, new_value="test").__dict__.copy()]
+            {2023: structs.TeamYear(20, 5, "wicked", "tricked", "offense", "chill", "fast", "none", "awesomesauce", new_value="test"),
+            2024: structs.TeamYear(19, 1, "wicked", "tricked", "offense", "chill", "fast", "none", "awesomesauce", new_value="test").__dict__.copy()},
+            [structs.TeamSocial("service1", "username", 12345, new_value="test"), structs.TeamSocial("service2", "username", 12345, new_value="test").__dict__.copy()]
         )
 
-        host_event = misc_structs.HostEvent("event location", 2024, "2025-3-9", "large", 16, 2, 4, 6, 3, 3, 3, "skills fields were also used for practice", new_value="test")
-        host = misc_structs.Host.create(team_host.id, [host_event], "comment")
+        host_event = structs.HostEvent("event location", 2024, "2025-3-9", "large", 16, 2, 4, 6, 3, 3, 3, "skills fields were also used for practice", new_value="test")
+        host = structs.Host.create(team_host.id, [host_event], "comment")
 
-        misc_structs.hosts_group.add(host)
+        structs.hosts_group.add(host)
 
         host_time.stop()
         teams_time.start()
 
-        teams = [misc_structs.Team.create(f"Team {n}", {2023:{}, 2024:{}}) for n in range(1, 5)] #4 teams numberer 1-4
+        teams = [structs.Team.create(f"Team {n}", {2023:{}, 2024:{}}) for n in range(1, 5)] #4 teams numberer 1-4
 
         for team in teams:
-            misc_structs.teams_group.add(team)
+            structs.teams_group.add(team)
             for _ in range(2):
-                robot = misc_structs.Robot.create(team.id, {2024: misc_structs.RobotYear(new_value="test")}, "this comment is so comment pilled")
-                misc_structs.robots_group.add(robot)
+                robot = structs.Robot.create(team.id, {2024: structs.RobotYear(new_value="test")}, "this comment is so comment pilled")
+                structs.robots_group.add(robot)
 
         teams_time.stop()
         scouters_time.start()
@@ -130,9 +130,9 @@ def main():
         scouters_time.stop()
         profiles_time.start()
 
-        qual_1 = comp_tables.Match.create(host.id, datetime.strptime(host_event.date, "%Y-%d-%m"), comp_tables.MatchType.QUAL, 1)
-        qual_2 = comp_tables.Match.create(host.id, datetime.strptime(host_event.date, "%Y-%d-%m"), comp_tables.MatchType.QUAL, 2)
-        qual_3 = comp_tables.Match.create(host.id, datetime.strptime(host_event.date, "%Y-%d-%m"), comp_tables.MatchType.QUAL, 3)
+        qual_1 = tables.Match.create(host.id, datetime.strptime(host_event.date, "%Y-%d-%m"), tables.MatchType.QUAL, 1)
+        qual_2 = tables.Match.create(host.id, datetime.strptime(host_event.date, "%Y-%d-%m"), tables.MatchType.QUAL, 2)
+        qual_3 = tables.Match.create(host.id, datetime.strptime(host_event.date, "%Y-%d-%m"), tables.MatchType.QUAL, 3)
 
         qual_matchups = (0, 3), (1, 2), (0, 2) #assuming teams 1 and 3 win their first matchups
         qual_matches = qual_1, qual_2, qual_3
@@ -141,7 +141,7 @@ def main():
             win = random.randint(0, 1)
             for j, team in enumerate((teams[qual_matchups[i][0]], teams[qual_matchups[i][1]])):
                 win = not win
-                for offset, robot in enumerate(misc_structs.robots_group.filter(team_id=team.id)):
+                for offset, robot in enumerate(structs.robots_group.filter(team_id=team.id)):
                     database.comp_db.session.add(CompData.create(m.id, scouters[j*2+offset].id, robot.id, random.randint(0, 10), win, f"comment {i} {j} {offset}"))
 
         profiles_time.stop()
@@ -150,9 +150,9 @@ def main():
 
         commit_time.start()
 
-        misc_structs.hosts_group.commit()
-        misc_structs.teams_group.commit()
-        misc_structs.robots_group.commit()
+        structs.hosts_group.commit()
+        structs.teams_group.commit()
+        structs.robots_group.commit()
 
         database.shared_db.session.commit()
         database.comp_db.session.commit()
@@ -165,9 +165,9 @@ def main():
 
     #close sessions
 
-    misc_structs.hosts_group.close()
-    misc_structs.teams_group.close()
-    misc_structs.robots_group.close()
+    structs.hosts_group.close()
+    structs.teams_group.close()
+    structs.robots_group.close()
 
     database.shared_db.close_session()
     database.comp_db.close_session()
