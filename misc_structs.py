@@ -1,13 +1,15 @@
 from config import STRUCT_HOSTS_SCOPE, STRUCT_ROBOTS_SCOPE, STRUCT_TEAMS_SCOPE
+import database
+from datetime import datetime
 import json
 import os
 from typing import Any
 
 ATTR_UPDATED = "_updated"
 
-#indent to give for json, empty for no indent (no pretty format, all one line)
-JSON_FILE_PRETTY = ""
-JSON_DIR_PRETTY = ""
+#indent to give for json, `None` (no pretty format, all one line)
+JSON_FILE_PRETTY = None
+JSON_DIR_PRETTY = None
 
 class MiscStructure:
     """
@@ -19,8 +21,9 @@ class MiscStructure:
         instance._updated = False
         return instance
 
-    def __init__(self, id:int):
+    def __init__(self, id:int, **kwargs):
         self.id = id
+        self.__dict__.update(kwargs)
 
     def __setattr__(self, name:str, value:Any)->None:
         super().__setattr__(name, value)
@@ -39,7 +42,6 @@ class MiscStructure:
         """
         self._updated = False
 
-
 class MiscStructureGroup[T:MiscStructure]:
     """
     Base class for group which manages entries of Misc Structures.
@@ -50,6 +52,16 @@ class MiscStructureGroup[T:MiscStructure]:
         self.structure_t = structure_t
         self.children:dict[int, T] = {} #id -> MiscStructure
         self._opened = False
+
+    def __len__(self):
+        return len(self.children)
+    
+    def __bool__(self):
+        return self._opened and bool(self.children)
+    
+    def __iter__(self):
+        for child in self.children.values():
+            yield child
 
     def read(self)->dict[int, Any]:
         """
@@ -98,6 +110,24 @@ class MiscStructureGroup[T:MiscStructure]:
         Get a child from the group by its ID.
         """
         return self.children.get(id, None)
+
+    def filter(self, **attrs):
+        """
+        Find all children which have attributes of the given values.
+        """
+        for child in self.children.values():
+            for name, value in attrs.items():
+                if name in child.__dict__ and child.__dict__[name] == value:
+                    yield child
+
+    def filter_first(self, **attrs):
+        """
+        Get the first child which has attributes of the given values.
+        """
+        try:
+            return next(self.filter(**attrs))
+        except StopIteration:
+            return None
 
     def refresh(self):
         """
@@ -160,6 +190,8 @@ class JsonFileStructureGroup[T:MiscStructure](MiscStructureGroup[T]):
         self.pretty = pretty
 
     def read(self)->dict[int, dict[str]]:
+        if not os.path.isfile(self.scope):
+            return {}
         with open(self.scope, "rb") as f:
             data:dict[str] = json.load(f)
         return {int(id): state for id, state in data.items()}
@@ -168,7 +200,7 @@ class JsonFileStructureGroup[T:MiscStructure](MiscStructureGroup[T]):
         data = {str(id):self.from_child(child) for id, child in self.children.items()}
         #json formatting happens here, so that (file open -> truncate -> json.dump -> error -> lose data) doesnt happen 
         contents = json.dumps(data, indent=self.pretty)
-        with open(self.scope, "wb") as f:
+        with open(self.scope, "w") as f:
             f.write(contents)
 
 class JsonDirStructureGroup[T:MiscStructure](MiscStructureGroup[T]):
@@ -182,18 +214,22 @@ class JsonDirStructureGroup[T:MiscStructure](MiscStructureGroup[T]):
 
     def read(self)->dict[int]:
         rtv = {}
-        for fn in os.listdir(self.scope):
-            if not fn.isdecimal():
-                continue
-            path = os.path.join(self.scope, fn)
-            with open(path, "rb") as f:
-                rtv[int(fn)] = json.load(f)
+        if os.path.isdir(self.scope):
+            for fn in os.listdir(self.scope):
+                if not fn.isdecimal():
+                    continue
+                path = os.path.join(self.scope, fn)
+                with open(path, "rb") as f:
+                    rtv[int(fn)] = json.load(f)
         return rtv
     
     def write(self):
 
         #get all new contents so that if there is an error, nothing is written
         to_write = {}
+
+        if not os.path.isdir(self.scope):
+            os.mkdir(self.scope)
 
         for id, child in self.children.items():
             path = os.path.join(self.scope, str(id))
@@ -203,7 +239,7 @@ class JsonDirStructureGroup[T:MiscStructure](MiscStructureGroup[T]):
             to_write[path] = contents
         
         for path, contents in to_write.items():
-            with open(path, "wb") as f:
+            with open(path, "w") as f:
                 f.write(contents)
 
         #dont need to hang onto this any longer than necessary
@@ -220,7 +256,7 @@ class extradata:
     Extra data contained by a MiscStruct.
     """
 
-    def __init__(self, **kwargs:dict[str]):
+    def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
     def __getitem__(self, key:str):
@@ -244,8 +280,9 @@ class HostEvent(extradata):
     Data on a specific event of a event host.
     """
 
-    def __init__(self, comp_year:int, date:str, venue_size:int=0, attendance:int=0, dropped_out:int=0, teams_outofstate:int=0, field_count:int=0,
-                 match_field_count:int=0, practice_field_count:int=0, skills_field_count:int=0, comments:str="", **kwargs):
+    def __init__(self, name:str, comp_year:int, date:str, venue_size:str|None=None, attendance:int|None=None, dropped_out:int|None=None, teams_outofstate:int|None=None,
+                 field_count:int|None=None, match_field_count:int|None=None, practice_field_count:int|None=None, skills_field_count:int|None=None, comments:str="", **kwargs):
+        self.name = name
         self.comp_year = comp_year
         self.date = date
         self.venue_size = venue_size
@@ -257,7 +294,7 @@ class HostEvent(extradata):
         self.practice_field_count = practice_field_count
         self.skills_field_count = skills_field_count
         self.comments = comments
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
 
 class Host(MiscStructure):
@@ -265,10 +302,20 @@ class Host(MiscStructure):
     Contains data on event hosts.
     """
 
-    def __init__(self, id:int, team_id:int|None=None, events:list[dict[str]]=None, comments:str=""):
-        super().__init__(id)
+    @classmethod
+    def create(cls, team_id:int|None=None, events:list[HostEvent|dict[str]]|None=None, comments:str="", dt:datetime|None=None):
+        """
+        Creates a new Host from the given team ID, events, and comments.
+
+        A custom `datetime` can be specified for generating the Host's ID, but it is
+        recommended that the current date and time is used.
+        """
+        return cls(id=database.generate_id(dt), team_id=team_id, events=events, comments=comments)
+
+    def __init__(self, id:int, team_id:int|None=None, events:list[HostEvent|dict[str]]|None=None, comments:str="", **kwargs):
+        super().__init__(id, **kwargs)
         self.team_id = team_id
-        self.events = [HostEvent(**data) for data in events] if isinstance(events, list) else []
+        self.events = [data if isinstance(data, HostEvent) else HostEvent(**data) for data in events] if isinstance(events, list) else []
         self.comments = comments
 
     def find_year(self, year:int)->list[HostEvent]:
@@ -287,7 +334,8 @@ class Host(MiscStructure):
 
     def getstate(self)->Any:
         d = self.__dict__.copy()
-        d["years"] = {str(num):year.__dict__.copy() for num, year in self.years.items()}
+        del d[ATTR_UPDATED]
+        d["events"] = [event.__dict__.copy() for event in self.events]
         return d
 
     def setstate(self, state:dict[str]):
@@ -301,10 +349,11 @@ class TeamSocial(extradata):
     Data on a team's social media account.
     """
 
-    def __init__(self, u_name:str, u_id:int|None=None, **kwargs):
+    def __init__(self, name:str, u_name:str, u_id:int|None=None, **kwargs):
+        self.name = name
         self.u_name = u_name #account name
         self.u_id = u_id #account ID (immutable)
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
 
 class TeamYear(extradata):
@@ -323,7 +372,7 @@ class TeamYear(extradata):
         self.time_to_build = time_to_build
         self.scouting = scouting
         self.comments = comments
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
     
 class Team(MiscStructure):
@@ -331,11 +380,21 @@ class Team(MiscStructure):
     Contains data on a team.
     """
 
-    def __init__(self, id:int, name:str, years:dict[int, dict[str]]=None, socails:list[dict[str]]=None, comments:str=""):
-        super().__init__(id)
+    @classmethod
+    def create(cls, name:str, years:dict[int, TeamYear|dict[str]]|None=None, socials:list[TeamSocial|dict[str]]|None=None, comments:str="", dt:datetime|None=None):
+        """
+        Creates a new Team from the given name, year info, socials, and comments.
+
+        A custom `datetime` can be specified for generating the Team's ID, but it is
+        recommended that the current date and time is used.
+        """
+        return cls(id=database.generate_id(dt), name=name, years=years, socials=socials, comments=comments)
+
+    def __init__(self, id:int, name:str, years:dict[int, TeamYear|dict[str]]|None=None, socails:list[TeamSocial|dict[str]]|None=None, comments:str="", **kwargs):
+        super().__init__(id, **kwargs)
         self.name = name
-        self.years = {int(num): TeamYear(**data) for num, data in years.items()} if isinstance(years, dict) else {}
-        self.socials = [TeamSocial(**data) for data in socails] if isinstance(socails, list) else []
+        self.years = {int(num): data if isinstance(data, TeamYear) else TeamYear(**data) for num, data in years.items()} if isinstance(years, dict) else {}
+        self.socials = [data if isinstance(data, TeamSocial) else TeamSocial(**data) for data in socails] if isinstance(socails, list) else []
         self.comments = comments
 
     def get_year(self, year:int):
@@ -356,6 +415,7 @@ class Team(MiscStructure):
     
     def getstate(self)->Any:
         d = self.__dict__.copy()
+        del d[ATTR_UPDATED]
         d["years"] = {str(num):year.__dict__.copy() for num, year in self.years.items()}
         d["socials"] = [social.__dict__.copy() for social in self.socials]
         return d
@@ -365,25 +425,35 @@ class Team(MiscStructure):
         super().setstate(state)
 
 
-class RobotsYear(extradata):
+class RobotYear(extradata):
     """
     Data for a robot pertaining to one year.
     """
 
     def __init__(self, images:dict[str, list[str]]=None, comments:str="", **kwargs):
-        self.images = images if isinstance(images, dict) else {} #angle_name -> [images, ...]
+        self.images = images if isinstance(images, dict) else {} #angle_name -> [image path, ...]
         self.comments = comments
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
-class Robots(MiscStructure):
+class Robot(MiscStructure):
     """
     Contains data on a robot.
     """
 
-    def __init__(self, id:int, team_id:int, years:dict[int, dict[str]]=None, comments:str=""):
-        super().__init__(id)
+    @classmethod
+    def create(cls, team_id:int, years:dict[int, RobotYear|dict[str]]|None=None, comments:str="", dt:datetime|None=None):
+        """
+        Creates a new Robot from the given team ID, year info, and comments.
+
+        A custom `datetime` can be specified for generating the Robot's ID, but it is
+        recommended that the current date and time is used.
+        """
+        return cls(id=database.generate_id(dt), team_id=team_id, years=years, comments=comments)
+
+    def __init__(self, id:int, team_id:int, years:dict[int, RobotYear|dict[str]]|None=None, comments:str="", **kwargs):
+        super().__init__(id, **kwargs)
         self.team_id = team_id
-        self.years = {int(num): RobotsYear(**data) for num, data in years.items()} if isinstance(years, dict) else {}
+        self.years = {int(num): data if isinstance(data, RobotYear) else RobotYear(**data) for num, data in years.items()} if isinstance(years, dict) else {}
         self.comments = comments
 
     def get_team(self):
@@ -394,6 +464,7 @@ class Robots(MiscStructure):
 
     def getstate(self)->Any:
         d = self.__dict__.copy()
+        del d[ATTR_UPDATED]
         d["years"] = {str(num):year.__dict__.copy() for num, year in self.years.items()}
         return d
 
@@ -403,4 +474,4 @@ class Robots(MiscStructure):
 
 hosts_group = JsonDirStructureGroup[Host](STRUCT_HOSTS_SCOPE, Host)
 teams_group = JsonDirStructureGroup[Team](STRUCT_TEAMS_SCOPE, Team)
-robots_group = JsonDirStructureGroup[Robots](STRUCT_ROBOTS_SCOPE, Robots)
+robots_group = JsonFileStructureGroup[Robot](STRUCT_ROBOTS_SCOPE, Robot) #DEBUG
