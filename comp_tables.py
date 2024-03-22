@@ -3,12 +3,13 @@ import clips
 import database
 from datetime import datetime
 from enum import Enum
-import misc_structures
+import misc_structs
 import sqlalchemy
 from sqlalchemy import Column, DateTime, Integer, String
 import sqlalchemy.orm
 
 ROBOT_DESIGNATION_LENGTH = 2 #letter between A and ZZ (676 possible values)
+COMMENT_LENGTH = 1024
 
 MATCH_TABLENAME = "matches"
 
@@ -69,6 +70,16 @@ class Match(database.comp_db.Base):
         """
         database.drop_table(cls.__table__, engine)
 
+    @classmethod
+    def create(cls, host_id:int, date:datetime, type:MatchType, number:int, dt:datetime|None=None):
+        """
+        Creates a new Match from the given host ID, date, match type, and match number.
+
+        A custom `datetime` can be specified for generating the Match's ID, but it is
+        recommended that the current date and time is used.
+        """
+        return cls(id=database.generate_id(dt), host_id=host_id, date=date, type=type, number=number)
+
     def __init__(self, id:int, host_id:int, date:datetime, type:MatchType, number:int):
         self.id = id
         self.host_id = host_id
@@ -80,7 +91,7 @@ class Match(database.comp_db.Base):
         """
         Gets the Team with the stored `host_id`.
         """
-        return misc_structures.hosts_group.get(self.host_id)
+        return misc_structs.hosts_group.get(self.host_id)
 
     def get_clip_path(self, event_name:str, file_format:str):
         """
@@ -100,6 +111,12 @@ class Profile(database.comp_db.Base):
 
     __abstract__ = True
 
+    id = Column(Integer, primary_key=True)
+    match_id = Column(Integer, nullable=False)
+    account_id = Column(Integer, nullable=True) #TODO consider making nullable depending on if accounts are enabled
+    robot_id = Column(Integer, nullable=False) #links to misc data "Robots"
+    comments = Column(String(COMMENT_LENGTH), nullable=True)
+
     @classmethod
     def create_table(cls, engine=database.comp_db.engine):
         """
@@ -114,16 +131,11 @@ class Profile(database.comp_db.Base):
         """
         database.drop_table(cls.__table__, engine)
 
-    id = Column(Integer, primary_key=True)
-    match_id = Column(Integer, nullable=False)
-    account_id = Column(Integer, nullable=True) #TODO consider making nullable depending on if accounts are enabled
-    robot_id = Column(String(ROBOT_DESIGNATION_LENGTH), nullable=False) #links to misc data "Robots"
-
-    def __init__(self, id:int, match_id:int, account_id:int|None, robot:str):
+    def __init__(self, id:int, match_id:int, account_id:int|None, robot_id:int, comments:str):
         self.id = id
         self.match_id = match_id
         self.account_id = account_id
-        self.robot = robot
+        self.robot_id = robot_id
 
     def get_account(self)->accounts.Account|None:
         """
@@ -141,4 +153,4 @@ class Profile(database.comp_db.Base):
         """
         Get the Robot with the stored `robot_id`.
         """
-        return misc_structures.robots_group.get(self.robot_id)
+        return misc_structs.robots_group.get(self.robot_id)
