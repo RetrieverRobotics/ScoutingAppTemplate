@@ -21,7 +21,6 @@ CLIP_TREE = clips.detailed_clips_tree({
 })
 
 #service worker
-SW_NAMESPACE = "client"
 VIDEO_SELECTION_REDIRECT = "/test/after"
 #######################################
 
@@ -50,7 +49,6 @@ def service_worker():
     }
     return render_template(
         "sw/sw.js",
-        SW_URL_NAMESPACE=SW_NAMESPACE,
         VIDEO_SELECTION_OUTPUT=ACTION,
         VIDEO_SELECTION_REDIRECT=VIDEO_SELECTION_REDIRECT,
         ASSETS=assets

@@ -140,7 +140,7 @@ function cacheAsset(cache, response, source, method) {
 
     method = method.trim().toLowerCase();
     
-    let options = ASSETS.get(url);
+    let options = ASSETS.get(url.pathname);
     if (options === undefined)
         options = ASSETS_DEFAULT;
 
