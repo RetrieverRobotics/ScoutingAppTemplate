@@ -59,9 +59,9 @@ def main():
 
     #open sessions
 
-    structs.hosts_group.open()
-    structs.teams_group.open()
-    structs.robots_group.open()
+    structs.host_group.open()
+    structs.team_group.open()
+    structs.robot_group.open()
 
     database.shared_db.create_session()
     database.comp_db.create_session()
@@ -70,13 +70,13 @@ def main():
     #do stuff ...
 
     #if theres already data generated
-    if structs.hosts_group:
+    if structs.host_group:
         print("accounts:", database.shared_db.session.query(accounts.Account).count())
         print("match:", database.comp_db.session.query(tables.Match).count())
         print("profiles:", database.comp_db.session.query(CompData).count())
-        print("hosts:", sum(1 for _ in structs.hosts_group))
-        print("teams:", sum(1 for _ in structs.teams_group))
-        print("robots:", sum(1 for _ in structs.robots_group))
+        print("hosts:", sum(1 for _ in structs.host_group))
+        print("teams:", sum(1 for _ in structs.team_group))
+        print("robots:", sum(1 for _ in structs.robot_group))
     else:
 
         #timers
@@ -105,7 +105,7 @@ def main():
         host_event = structs.HostEvent("event location", 2024, "2025-3-9", "large", 16, 2, 4, 6, 3, 3, 3, "skills fields were also used for practice", new_value="test")
         host = structs.Host.create(team_host.id, [host_event], "comment")
 
-        structs.hosts_group.add(host)
+        structs.host_group.add(host)
 
         host_time.stop()
         teams_time.start()
@@ -113,10 +113,10 @@ def main():
         teams = [structs.Team.create(f"Team {n}", {2023:{}, 2024:{}}) for n in range(1, 5)] #4 teams numberer 1-4
 
         for team in teams:
-            structs.teams_group.add(team)
+            structs.team_group.add(team)
             for _ in range(2):
                 robot = structs.Robot.create(team.id, {2024: structs.RobotYear(new_value="test")}, "this comment is so comment pilled")
-                structs.robots_group.add(robot)
+                structs.robot_group.add(robot)
 
         teams_time.stop()
         scouters_time.start()
@@ -141,7 +141,7 @@ def main():
             win = random.randint(0, 1)
             for j, team in enumerate((teams[qual_matchups[i][0]], teams[qual_matchups[i][1]])):
                 win = not win
-                for offset, robot in enumerate(structs.robots_group.filter(team_id=team.id)):
+                for offset, robot in enumerate(structs.robot_group.filter(team_id=team.id)):
                     database.comp_db.session.add(CompData.create(m.id, scouters[j*2+offset].id, robot.id, random.randint(0, 10), win, f"comment {i} {j} {offset}"))
 
         profiles_time.stop()
@@ -150,9 +150,9 @@ def main():
 
         commit_time.start()
 
-        structs.hosts_group.commit()
-        structs.teams_group.commit()
-        structs.robots_group.commit()
+        structs.host_group.commit()
+        structs.team_group.commit()
+        structs.robot_group.commit()
 
         database.shared_db.session.commit()
         database.comp_db.session.commit()
@@ -165,9 +165,9 @@ def main():
 
     #close sessions
 
-    structs.hosts_group.close()
-    structs.teams_group.close()
-    structs.robots_group.close()
+    structs.host_group.close()
+    structs.team_group.close()
+    structs.robot_group.close()
 
     database.shared_db.close_session()
     database.comp_db.close_session()

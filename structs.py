@@ -330,7 +330,7 @@ class Host(MiscStructure):
         """
         Get the Team with the stored `team_id`.
         """
-        return teams_group.get(self.team_id)
+        return team_group.get(self.team_id)
 
     def getstate(self)->Any:
         d = self.__dict__.copy()
@@ -409,7 +409,7 @@ class Team(MiscStructure):
         """
         Find all robots that belong to this team.
         """
-        for robot in robots_group.children.values():
+        for robot in robot_group.children.values():
             if robot.team_id == self.id:
                 yield robot
     
@@ -460,7 +460,7 @@ class Robot(MiscStructure):
         """
         Get the Team with the stored `team_id`.
         """
-        return teams_group.get(self.team_id)
+        return team_group.get(self.team_id)
 
     def getstate(self)->Any:
         d = self.__dict__.copy()
@@ -472,6 +472,6 @@ class Robot(MiscStructure):
         self.__init__(**state)
         super().setstate(state)
 
-hosts_group = JsonDirStructureGroup[Host](STRUCT_HOSTS_SCOPE, Host)
-teams_group = JsonDirStructureGroup[Team](STRUCT_TEAMS_SCOPE, Team)
-robots_group = JsonFileStructureGroup[Robot](STRUCT_ROBOTS_SCOPE, Robot) #DEBUG
+host_group = JsonDirStructureGroup[Host](STRUCT_HOSTS_SCOPE, Host)
+team_group = JsonDirStructureGroup[Team](STRUCT_TEAMS_SCOPE, Team)
+robot_group = JsonFileStructureGroup[Robot](STRUCT_ROBOTS_SCOPE, Robot) #DEBUG
