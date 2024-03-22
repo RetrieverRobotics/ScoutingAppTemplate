@@ -112,7 +112,7 @@ class Account(database.shared_db.Base):
         Creates a new Account from the given name, email, and raw password.
 
         A custom `datetime` can be specified for generating the Account's ID, but it is
-        recommended that the current date and time is used when generating an ID.
+        recommended that the current date and time is used.
         """
         salt = os.urandom(SALT_LENGTH)
         return cls(id=database.generate_id(dt), name=name, email=email, password=database.hash_password(raw_password, salt, length=PASSWORD_LENGTH), salt=salt)
