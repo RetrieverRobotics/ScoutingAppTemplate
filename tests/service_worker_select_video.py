@@ -4,7 +4,7 @@ imports_for_testing()
 import app
 import clips
 from datetime import datetime
-from flask import Blueprint, render_template, send_file
+from flask import Blueprint, render_template, Response, send_file
 
 ACTION = "/get_video"
 #######################################
@@ -47,12 +47,15 @@ def service_worker():
         "/test": {"behavior": "method", "methods":["get"]},
         "/test/after": {"behavior": "successful"}
     }
-    return render_template(
+    response = Response(render_template(
         "sw/sw.js",
         VIDEO_SELECTION_OUTPUT=ACTION,
         VIDEO_SELECTION_REDIRECT=VIDEO_SELECTION_REDIRECT,
-        ASSETS=assets
-    ), 200, {"Content-Type":"application/javascript"}
+        ASSETS=assets,
+        ASSETS_DEFAULT={"behavior":"never"}
+    ), 200)
+    response.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    return response
 
 @bp.get("/manifest.json")
 def get_manifest():

@@ -6,7 +6,8 @@
 
     VIDEO_SELECTION_OUTPUT:     The URL to receive output from the select_video template on
     VIDEO_SELECTION_REDIRECT:   The URL to redirect to after receiving video selection output
-    ASSETS:                     Array of URLs to consider as assets; will be pre-cacheed when the service worker is installed
+    ASSETS:                     Map of URLs to caching configs
+    ASSETS_DEFAULT              Default caching configs (defaults to successful behavior)
 #}
 */
 
