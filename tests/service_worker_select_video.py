@@ -4,7 +4,7 @@ imports_for_testing()
 import app
 import clips
 from datetime import datetime
-from flask import Blueprint, render_template, send_file
+from flask import Blueprint, render_template, Response, send_file
 
 ACTION = "/get_video"
 #######################################
@@ -21,7 +21,6 @@ CLIP_TREE = clips.detailed_clips_tree({
 })
 
 #service worker
-SW_NAMESPACE = "client"
 VIDEO_SELECTION_REDIRECT = "/test/after"
 #######################################
 
@@ -41,15 +40,22 @@ def test_after():
     return "<p>It worked!</p>"
 
 @bp.get("/sw.js")
+@app.set_service_worker
 def service_worker():
-    assets = ["/", "/test", "/test/after"]
-    return render_template(
+    assets = {
+        "/": {"behavior": "never"},
+        "/test": {"behavior": "method", "methods":["get"]},
+        "/test/after": {"behavior": "successful"}
+    }
+    response = Response(render_template(
         "sw/sw.js",
-        SW_URL_NAMESPACE=SW_NAMESPACE,
         VIDEO_SELECTION_OUTPUT=ACTION,
         VIDEO_SELECTION_REDIRECT=VIDEO_SELECTION_REDIRECT,
-        ASSETS=assets
-    ), 200, {"Content-Type":"application/javascript"}
+        ASSETS=assets,
+        ASSETS_DEFAULT={"behavior":"never"}
+    ), 200)
+    response.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    return response
 
 @bp.get("/manifest.json")
 def get_manifest():

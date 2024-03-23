@@ -6,9 +6,55 @@
 
     VIDEO_SELECTION_OUTPUT:     The URL to receive output from the select_video template on
     VIDEO_SELECTION_REDIRECT:   The URL to redirect to after receiving video selection output
-    ASSETS:                     Array of URLs to consider as assets; will be pre-cacheed when the service worker is installed
+    ASSETS:                     Map of URLs to caching configs
+    ASSETS_DEFAULT              Default caching configs (defaults to successful behavior)
 #}
 */
+
+const ASSET_ALWAYS = "always";
+const ASSET_SUCCESSFUL = "successful";
+const ASSET_METHOD = "method";
+const ASSET_NEVER = "never";
+
+/**
+ * @typedef AssetConfig Options for how an asset should be cached
+ * @property {("always"|"successful"|"method"|"never")} behavior The behavior to cache the asset with
+ * @property {string[]|undefined} methods If `behavior` == "method", `methods` is the list of methods to cache for 
+ */
+
+/**
+ * Set up an asset map
+ * @param {Object.<string, AssetConfig|string>} options The options to use
+ * @returns {Map<string, AssetConfig>}
+ */
+function setupAssets(options) {
+    const rtv = new Map();
+    for (const href in options) {
+        const url = new URL(href, location.origin);
+        let behavior;
+        let methods;
+        if (typeof options[href] == "string") {
+            behavior = options[href].trim().toLowerCase();
+            methods = behavior == ASSET_METHOD ? [] : undefined;
+        }
+        else if (typeof (options[href].behavior) == "string"){
+            behavior = options[href].behavior.trim().toLowerCase();
+            if (behavior == ASSET_METHOD) {
+                methods = [];
+                if (Array.isArray(options[href].methods))
+                    for (const method of options[href].methods)
+                        if (typeof method == "string")
+                            methods.push(method.trim().toLowerCase());
+            }
+            else methods = undefined;
+        }
+        else continue; //invalid, skip
+
+        rtv.set(url.pathname, {behavior: behavior, methods: methods});
+    }
+
+    return rtv;
+}
 
 const CACHE_PAGES = "pages";
 const CACHE_CLIPS = "clips";
@@ -23,10 +69,11 @@ const SW_URL = new URL(eval(`{{ url_for(request.endpoint) | tojson }}`), locatio
 
 const VIDEO_SELECTION_OUTPUT = new URL(eval(`{{ VIDEO_SELECTION_OUTPUT|tojson }}`), location.origin);
 
-/** @type {object} */
+/** @type {URL} */
 const VIDEO_SELECTION_REDIRECT = new URL(eval(`{{ VIDEO_SELECTION_REDIRECT|tojson }}`), location.origin);
-/** @type {URL[]} */
-const ASSETS = eval(`{{ ASSETS|tojson }}`).map(value => new URL(value, location.origin));
+const ASSETS = setupAssets(eval(`({{ ASSETS|tojson }})`));
+/** @type {AssetConfig}  */
+const ASSETS_DEFAULT = eval(`({% if ASSETS_DEFAULT is defined and ASSETS_DEFAULT %}{{ ASSETS_DEFAULT|tojson }}{% else %} {"behavior": "successful"} {% endif %})`);
 
 
 //error pages
@@ -68,6 +115,63 @@ async function setCurrentVideo(url) {
         client.postMessage({name:"video/set", value:url.href});
 }
 
+/*
+ * Cache the given asset
+ * @param {Cache} cache Cache to cache the response into
+ * @param {Response} response Response to attempt to cache
+ * @param {Request|URL|string|null|undefined} source source to use, attempts to retrieve url from response if `source` is null or undefined
+ * @param {string|undefined} method Method that the request was made with, GET by default
+ * @returns {boolean} If the response was successfully cached
+ */
+function cacheAsset(cache, response, source, method) {
+    /** @type {URL} */
+    let url;
+    if (source === null || source === undefined) {
+        source = new URL(response.url, location.origin);
+        url = source;
+    }
+    else if (typeof source == "string") {
+        source = new URL(source, location.origin);
+        url = source;
+    }
+    else url = new URL(source.url, location.origin);
+
+    if (typeof method != "string")
+        method = source?.method || "get";
+
+    method = method.trim().toLowerCase();
+    
+    let options = ASSETS.get(url.pathname);
+    if (options === undefined)
+        options = ASSETS_DEFAULT;
+
+    switch (options.behavior.trim().toLowerCase()) {
+        case ASSET_ALWAYS:
+            console.log(url.pathname, options);
+            cache.put(source, response);
+            return true;
+        default:
+            console.error(`Unknown cache behavior ${options.behavior}: assuming default behavior ${ASSET_SUCCESSFUL}.`);
+        case ASSET_SUCCESSFUL:
+            console.log(url.pathname, options);
+            if (response.ok) {
+                cache.put(source, response);
+                return true;
+            }
+            else return false;
+        case ASSET_METHOD:
+            console.log(url.pathname, options);
+            if (Array.isArray(options.methods) && options.methods.some(value => value.trim().toLowerCase() == method)) {
+                cache.put(source, response)
+                return true;
+            }
+            return false;
+        case ASSET_NEVER:
+            console.log(url.pathname, options);
+            return false;
+    }
+}
+
 /**
  * Create a clip URL
  * @param {string} clip_group The clip group name
@@ -102,7 +206,7 @@ async function fetchClip(clipURL, docache) {
             response = await fetch(clipURL);
             if (docache && response.status == 200) { //if status == 206 (first load) then dont use
                 const cache = await caches.open(CACHE_CLIPS);
-                cache.put(clipURL, response.clone());
+                cacheAsset(cache, response.clone(), clipURL);
             }
         }
         else return await caches.match(clipURL);
@@ -131,7 +235,7 @@ async function setLocalVideo(name, video) {
     if (video == null)
         return cache.delete(name);
     else
-        cache.put(name, video.clone());
+        cacheAsset(cache, video.clone(), name);
     return true;
 }
 
@@ -301,11 +405,11 @@ async function handleInstall(ev) {
     console.log(`Pre-loading assets (${ASSETS.length})`);
     const cache = await caches.open(CACHE_PAGES);
     console.log(`Caching assets in cache "${CACHE_PAGES}"`);
-    for (const asset of ASSETS) {
+    for (const asset of ASSETS.keys()) {
         try {
             const response = await fetch(asset);
             if (response.ok)
-                cache.put(asset, response.clone());
+                cacheAsset(cache, response.clone(), asset);
         }
         catch(err) {
             console.error(err);
@@ -349,7 +453,7 @@ async function handleFetch(ev) {
         try {
             const response = await fetch(request);
             if (!match || response.ok)
-                cache.put(request, response.clone());
+                cacheAsset(cache, response.clone(), request);
             return response;
         }
         catch (err) {
