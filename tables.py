@@ -136,6 +136,7 @@ class Profile(database.comp_db.Base):
         self.match_id = match_id
         self.account_id = account_id
         self.robot_id = robot_id
+        self.comments = comments
 
     def get_account(self)->accounts.Account|None:
         """
