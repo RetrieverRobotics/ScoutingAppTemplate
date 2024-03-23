@@ -13,12 +13,7 @@ ACTION = "/get_video"
 #select_video template
 METHOD = "post"
 NAVIGATE = True
-CLIP_TREE = clips.detailed_clips_tree({
-        clips.format_group_name("test_comp", datetime(2023, 2, 16)): ["match_1.mp4", "match_2.mp4", "match_3.mp4"],
-        clips.format_group_name("test_comp", datetime(2023, 2, 17)): ["match_4.mp4", "match_5.mp4", "match_6.mp4"],
-        clips.format_group_name("test_comp2", datetime(2023, 2, 18)): ["match_1.mp4", "match_2.mp4", "match_3.mp4"],
-        clips.format_group_name("test_comp2", datetime(2023, 2, 19)): ["match_4.mp4", "match_5.mp4", "match_6.mp4"]
-})
+CLIP_TREE = clips.detailed_clips_tree(clips.read_clips_tree())
 
 #service worker
 SW_NAMESPACE = "client"
@@ -128,6 +123,7 @@ def test_after():
 """)
 
 @bp.get("/sw.js")
+@app.set_service_worker
 def service_worker():
     assets = ["/", "/test", "/test/after", "/manifest.json"]
     return render_template(

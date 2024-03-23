@@ -99,7 +99,7 @@ class Match(database.comp_db.Base):
 
         It should be noted that clip paths contructed with this method are not guaranteed to exist.
         """
-        return clips.construct_path(event_name, self.date, self.type, self.number, file_format)
+        return clips.construct_path(event_name, self.date, self.type.value, self.number, file_format)
     
 
 class Profile(database.comp_db.Base):
