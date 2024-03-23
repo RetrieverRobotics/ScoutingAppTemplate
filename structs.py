@@ -5,11 +5,13 @@ import json
 import os
 from typing import Any
 
+ATTR_ID = "id"
 ATTR_UPDATED = "_updated"
 
 #indent to give for json, `None` (no pretty format, all one line)
 JSON_FILE_PRETTY = None
 JSON_DIR_PRETTY = None
+JSON_OMIT_NULL = True
 
 class MiscStructure:
     """
@@ -41,6 +43,16 @@ class MiscStructure:
         Update the MiscStructure object with new state.
         """
         self._updated = False
+
+    def omit_attrs(self, state:Any)->Any:
+        """
+        Omit attributes from the given state.
+
+        Implementation Note:
+
+        Can work on the state in place, but must also return
+        the modified state to support immutable structures. 
+        """
 
 class MiscStructureGroup[T:MiscStructure]:
     """
@@ -87,7 +99,7 @@ class MiscStructureGroup[T:MiscStructure]:
         """
         Given a child, returns its state.
         """
-        return child.getstate()
+        return child.omit_attrs(child.getstate())
 
     def open(self):
         """
@@ -178,6 +190,40 @@ class MiscStructureGroup[T:MiscStructure]:
             else: #was removed
                 self.children[id] = self.to_child(value)
 
+
+class JsonStructure(MiscStructure):
+    """
+    MiscStructure which represents state from a JSON format.
+    """
+
+    def getstate(self)->dict[str]:
+        d = self.__dict__.copy()
+        return d
+
+    def setstate(self, state:dict[str]):
+        self.__init__(**state)
+        super().setstate(state)
+
+    def _omit_null(self, state:dict[str]):
+        """
+        Recursively removes null values from the given dictionary and any subdictionaries.
+        """
+        #cite: https://www.reddit.com/r/learnpython/comments/uz1vrq/comment/iaa9n3k/
+        #apparently `dict.copy().items()` is faster than `list(dict.items())`
+        for key, value in state.copy().items():
+            if value == None:
+                del state[key]
+            elif isinstance(value, dict):
+                self._omit_null(value)
+
+    def omit_attrs(self, state:dict[str])->dict[str]:
+        if ATTR_ID in state:
+            del state[ATTR_ID]
+        if ATTR_UPDATED in state:
+            del state[ATTR_UPDATED]
+        if JSON_OMIT_NULL:
+            self._omit_null(state)
+        return state
 
 
 class JsonFileStructureGroup[T:MiscStructure](MiscStructureGroup[T]):
@@ -297,7 +343,7 @@ class HostEvent(extradata):
         super().__init__(**kwargs)
 
 
-class Host(MiscStructure):
+class Host(JsonStructure):
     """
     Contains data on event hosts.
     """
@@ -332,16 +378,10 @@ class Host(MiscStructure):
         """
         return team_group.get(self.team_id)
 
-    def getstate(self)->Any:
-        d = self.__dict__.copy()
-        del d[ATTR_UPDATED]
+    def getstate(self):
+        d = super().getstate()
         d["events"] = [event.__dict__.copy() for event in self.events]
         return d
-
-    def setstate(self, state:dict[str]):
-        self.__init__(**state)
-        super().setstate(state)
-
 
 
 class TeamSocial(extradata):
@@ -375,7 +415,7 @@ class TeamYear(extradata):
         super().__init__(**kwargs)
 
     
-class Team(MiscStructure):
+class Team(JsonStructure):
     """
     Contains data on a team.
     """
@@ -414,15 +454,10 @@ class Team(MiscStructure):
                 yield robot
     
     def getstate(self)->Any:
-        d = self.__dict__.copy()
-        del d[ATTR_UPDATED]
+        d = super().getstate()
         d["years"] = {str(num):year.__dict__.copy() for num, year in self.years.items()}
         d["socials"] = [social.__dict__.copy() for social in self.socials]
         return d
-
-    def setstate(self, state:dict[str]):
-        self.__init__(**state)
-        super().setstate(state)
 
 
 class RobotYear(extradata):
@@ -435,7 +470,7 @@ class RobotYear(extradata):
         self.comments = comments
         super().__init__(**kwargs)
 
-class Robot(MiscStructure):
+class Robot(JsonStructure):
     """
     Contains data on a robot.
     """
@@ -463,15 +498,10 @@ class Robot(MiscStructure):
         return team_group.get(self.team_id)
 
     def getstate(self)->Any:
-        d = self.__dict__.copy()
-        del d[ATTR_UPDATED]
+        d = super().getstate()
         d["years"] = {str(num):year.__dict__.copy() for num, year in self.years.items()}
         return d
 
-    def setstate(self, state:dict[str]):
-        self.__init__(**state)
-        super().setstate(state)
-
 host_group = JsonDirStructureGroup[Host](STRUCT_HOSTS_SCOPE, Host)
 team_group = JsonDirStructureGroup[Team](STRUCT_TEAMS_SCOPE, Team)
-robot_group = JsonFileStructureGroup[Robot](STRUCT_ROBOTS_SCOPE, Robot) #DEBUG
+robot_group = JsonFileStructureGroup[Robot](STRUCT_ROBOTS_SCOPE, Robot)
