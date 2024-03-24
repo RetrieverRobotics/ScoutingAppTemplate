@@ -84,7 +84,6 @@ def create_table(table:sqlalchemy.Table, engine:sqlalchemy.engine.Engine):
     """
     table.create(engine, checkfirst=True)
 
-@classmethod
 def drop_table(table:sqlalchemy.Table, engine:sqlalchemy.engine.Engine):
     """
     Drops the table's metadata from the database.
