@@ -1,6 +1,10 @@
 __pycache__/
-clips/
 *.py[cod]
 secret_key
 create_account.slots
 *.db
+
+clips/
+hosts/
+teams/
+robots.json

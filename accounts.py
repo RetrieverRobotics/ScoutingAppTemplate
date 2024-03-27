@@ -1,4 +1,3 @@
-from config import ACCOUNTS_DATABASE_URI
 import database
 from datetime import datetime
 from enum import Enum
@@ -25,8 +24,6 @@ PASSWORD_RAW_MAX = 1000
 SALT_LENGTH = 128 #number of random bytes to generate for the salt
 
 logged_in:dict[int, int] = {} #session ID -> Account ID
-
-account_db = database.DB(ACCOUNTS_DATABASE_URI)
 bp = Blueprint("accounts", __name__, url_prefix="/accounts")
 
 def get_logged_in(session_id:int)->int|None:
@@ -82,7 +79,7 @@ def use_slot(slot_id:int):
         with open(ACCOUNT_SLOTS_PATH, "w") as f:
             f.writelines(lines)
 
-class Account(account_db.Base):
+class Account(database.shared_db.Base):
     """
     SQLAlchemy declarative base (table) for storing scouter account data.
     """
@@ -96,20 +93,18 @@ class Account(account_db.Base):
     salt = Column(BLOB(SALT_LENGTH), unique=True, nullable=False)
 
     @classmethod
-    def create_table(cls, engine=account_db.engine):
+    def create_table(cls, engine=database.shared_db.engine):
         """
         Adds the table's metadata to the database.
         """
-        if not database.sqlalchemy.inspect(engine).has_table(cls.__tablename__):
-            cls.__table__.create(engine)
+        database.create_table(cls.__table__, engine)
 
     @classmethod
-    def drop_table(cls, engine=account_db.engine):
+    def drop_table(cls, engine=database.shared_db.engine):
         """
         Drops the table's metadata from the database.
         """
-        if database.sqlalchemy.inspect(engine).has_table(cls.__tablename__):
-            cls.__table__.drop(engine)
+        database.drop_table(cls.__table__, engine)
 
     @classmethod
     def create(cls, name:str, email:str, raw_password:str, dt:datetime|None=None):
@@ -117,7 +112,7 @@ class Account(account_db.Base):
         Creates a new Account from the given name, email, and raw password.
 
         A custom `datetime` can be specified for generating the Account's ID, but it is
-        recommended that the current date and time is used when generating an ID.
+        recommended that the current date and time is used.
         """
         salt = os.urandom(SALT_LENGTH)
         return cls(id=database.generate_id(dt), name=name, email=email, password=database.hash_password(raw_password, salt, length=PASSWORD_LENGTH), salt=salt)
@@ -168,7 +163,7 @@ class AccountValidityCheck(Enum):
 def validate_credentials_existing(email:str, password:str|bytes, name:str|None=None):
     """
     Validates that the given account credentials are valid for an existing account.
-    Expects for `accounts.account_db` to have an open session.
+    Expects for `database.shared_db` to have an open session.
 
     If `password` is a string, it will be treated as a raw password and be hashed.
     If `name` is None, then it will be skipped.
@@ -183,7 +178,7 @@ def validate_credentials_existing(email:str, password:str|bytes, name:str|None=N
             if not password.strip():
                 return AccountValidityCheck.PASSWORD_MISSING
 
-        account = account_db.session.query(Account).filter_by(email=email).first()
+        account = database.shared_db.session.query(Account).filter_by(email=email).first()
 
         if account is None:
             return AccountValidityCheck.EMAIL_WRONG
@@ -201,7 +196,7 @@ def validate_credentials_existing(email:str, password:str|bytes, name:str|None=N
 def validate_credentials_new(email:str, name:str, password:str):
     """
     Validates that the given account credentials are valid to use when making a new account.
-    Expects for `accounts.account_db` to have an open session.
+    Expects for `database.shared_db` to have an open session.
     """
 
     try:
@@ -227,7 +222,7 @@ def validate_credentials_new(email:str, name:str, password:str):
                         and any(uc in password for uc in string.ascii_uppercase)):
                 return AccountValidityCheck.PASSWORD_INVALID
 
-        account = account_db.session.query(Account).filter_by(email=email).first()
+        account = database.shared_db.session.query(Account).filter_by(email=email).first()
 
         if account is not None:
             return AccountValidityCheck.EMAIL_WRONG
@@ -267,8 +262,8 @@ def route_create():
 
         if validity == AccountValidityCheck.OK:
             account = Account.create(name, email, password)
-            account_db.session.add(account)
-            account_db.session.commit()
+            database.shared_db.session.add(account)
+            database.shared_db.session.commit()
             use_slot(int(slot_id))
             log_in(request_utils.get_session_id(), account.id)
             return redirect("/", code=303) #redirect to index
@@ -326,7 +321,7 @@ def route_login():
         password = request.form["password"]
 
         validity = validate_credentials_existing(email, password)
-        account = account_db.session.query(Account).filter_by(email=email).first()
+        account = database.shared_db.session.query(Account).filter_by(email=email).first()
 
         if account is not None and validity == AccountValidityCheck.OK:
             log_in(request_utils.get_session_id(), account.id)
@@ -353,7 +348,7 @@ def route_login():
 @bp.get("/info")
 def get_info():
     account_id = get_logged_in(request_utils.get_session_id())
-    account = account_db.session.query(Account).filter_by(id=account_id).first()
+    account = database.shared_db.session.query(Account).filter_by(id=account_id).first()
 
     response = Response("null" if account is None else json.dumps({"name":account.name, "email":account.email}))
     response.headers["Content-Type"] = "application/json; charset=utf-8"

@@ -72,7 +72,7 @@
                         <div class="clip-selection" group_name="{{ group_name }}">
                             <select name="clip_name" disabled>
                                 {% for clip in group.clips %}
-                                <option value="{{ clip.name }}">Match {{ clip.match }} ({{ clip.file_format }})</option>
+                                <option value="{{ clip.name }}"> {{ ("Qual", "Elim", "Skills Drive", "Skills Auto")[clip.match] if clip.match >= 0 and clip.match < 4 else "Match" }} {{ clip.number }} ({{ clip.file_format }})</option>
                                 {% endfor %}
                             </select>
                         </div>
